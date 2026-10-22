@@ -71,6 +71,11 @@ export interface Rule {
   exportState?(): unknown;
   /** Replace accumulated state from a previous `exportState()` output. */
   restoreState?(state: unknown): void;
+  /**
+   * Internal counters for observability (e.g. `trackedLines`,
+   * `evictedLines`). Called on demand — never on the hot path.
+   */
+  stats?(): Readonly<Record<string, number>>;
 }
 
 /** The engine's verdict for one transaction plus telemetry about the eval. */
@@ -83,6 +88,12 @@ export interface Evaluation {
    * Empty when every rule ran cleanly.
    */
   readonly ruleErrors: readonly RuleError[];
+  /**
+   * True when the verdict was computed with degraded coverage — malformed
+   * input or at least one rule that threw. A big red flag on the result;
+   * alert on it rather than trusting the verdict at face value.
+   */
+  readonly degraded: boolean;
   /** Wall-clock microseconds spent inside `evaluate`. */
   readonly elapsedMicros: number;
 }

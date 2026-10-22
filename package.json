@@ -14,7 +14,9 @@
     "test": "jest",
     "typecheck": "tsc -b --pretty",
     "demo": "tsc -b && node examples/demo.mjs",
-    "bench": "tsc -b && node --expose-gc benchmarks/run.mjs"
+    "gateway": "tsc -b && node examples/reference-gateway.mjs",
+    "bench": "tsc -b && node --expose-gc benchmarks/run.mjs",
+    "soak": "tsc -b && node benchmarks/soak.mjs"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

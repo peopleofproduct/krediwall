@@ -10,6 +10,21 @@ Krediwall (*credit + wall* — a checkpoint on the credit lane, a Panini project
 | **What it is not** | Not an ML platform, not a case-management or AML suite, and not a replacement for NPCI's fraud monitoring. It adds lender-side credit context to what you already run. |
 | **Maturity** | **Alpha.** Rules and thresholds are illustrative and not tuned on production data. Not yet published to npm. |
 
+## In plain words
+
+UPI is India's payment rail — around **800 million payments move over it every day**, worth nearly **₹1 lakh crore**. Two things about it matter here:
+
+1. **It is instant and final.** Once the money moves, you cannot pull it back.
+2. **More of that money is now borrowed, not saved.** Indians can pay shops and people straight from a credit line or a RuPay credit card on UPI. Card-on-UPI alone already runs roughly **100 million payments a month**, and "credit line on UPI" is growing quickly.
+
+That changes who loses when a scam succeeds. Trick someone into paying from their *savings* and the customer loses money. Trick them into paying from a *credit line* and **the bank's money is gone** — the customer never had it to begin with.
+
+Fraudsters noticed early. Reported UPI fraud has grown roughly **5× in four years to over ₹1,200 crore a year**, police have flagged **over 24 lakh "mule" accounts** used to collect and move stolen money, and the RBI has already told banks to plug national fraud signals into their systems — with more safeguards signalled on the way.
+
+**Krediwall is a checkpoint that sits inside the lender's own systems.** Before a credit-funded payment goes through, it asks questions only a lender can answer — *how much of this credit line was just burned? how new is the line? is the recipient's phone number on a government fraud list?* — and answers in microseconds: let it through, flag it for review, or block it. A *naka* on the credit lane.
+
+*(The numbers above come from government answers in Parliament, RBI and DoT press releases and news reports — every claim is cited in the [market opportunity](docs/market-opportunity.md) and [problem statement](docs/problem-statement.md) docs.)*
+
 ## The problem in one paragraph
 
 When a savings-account UPI payment is fraudulent, the victim loses their own balance. When a **credit-funded** UPI payment is fraudulent, the loss is the **lender's capital** — and UPI is push-and-final, so there is no later chance to pull it back. Credit Line on UPI (CLOU) and RuPay credit cards on UPI put lender-funded money on a real-time rail, and mule networks can empty a fresh credit line quickly. Generic UPI and card fraud systems do not see credit-line state such as the sanctioned limit, how much of it has been burned in the last minute, or how new the line is. Krediwall does. Read the longer [problem statement](docs/problem-statement.md).
@@ -72,7 +87,9 @@ packages/
 └── enterprise-proxy/   @krediwall/enterprise-proxy open adapter + HTTP gateway + compliance deadline helpers,
                                                    plus stubs where commercial modules plug in
 examples/demo.mjs       npm run demo
-benchmarks/run.mjs      npm run bench
+examples/reference-gateway.mjs   npm run gateway — a complete deployment you can copy
+benchmarks/run.mjs      npm run bench     latency measurement
+benchmarks/soak.mjs     npm run soak      sustained-load boundedness check
 ```
 
 *DPI here means Digital Public Infrastructure (India's public rails), not deep packet inspection.* Packages are workspace-local for now; `npm install @krediwall/...` will work once they are published.
@@ -91,7 +108,8 @@ createHttpAdapter(adapter).listen(8080);
 - **Zero runtime dependencies** in `core` and `telemetry-rules`; everything uses Node built-ins.
 - **Allocation-light, bounded state.** Rules keep per-credit-line history in fixed-size typed-array rings (about 1.4 KB per tracked line at default settings) and the set of tracked lines is LRU-capped (`maxTrackedLines`, default 100,000). Each call still allocates a couple of small objects; it is not allocation-free.
 - **Failure isolation and an audit seam.** A rule that throws is skipped, recorded in `evaluation.ruleErrors` and surfaced via an `onRuleError` hook — it cannot take the pipeline down, and its absence is visible. `onEvaluation` emits every verdict for your audit queue; malformed transactions return REVIEW, never a silent ALLOW.
-- **Restart-safe.** `exportState()`/`restoreState()` carry per-line history across restarts and replica warm-ups — see the [integration guide](docs/integration-guide.md).
+- **Restart-safe.** `exportState()`/`restoreState()` carry per-line history across restarts and replica warm-ups, and `saveStateToFile()`/`restoreStateFromFile()` persist it atomically to disk — see the [integration guide](docs/integration-guide.md).
+- **Observable.** `GET /metrics` serves Prometheus text (verdicts, per-rule hits/errors, tracked and evicted lines), `engine.metrics` exposes the same counters in-process, and `evaluation.degraded` flags any verdict computed with degraded coverage.
 - **Data minimisation, not a privacy guarantee.** Rules keep 32-bit bucket hashes instead of raw VPAs. That is a fast bucketing hash, not cryptographic — low-entropy identifiers can be recovered by dictionary search. Fraud-feed lookups use keyed HMAC digests. Everything runs in your process; the library logs nothing and sends nothing. None of this is a compliance certification.
 - **Open core.** The engine, starter rules and open adapters are Apache-2.0. Graph-network scoring and automated regulatory reporters are not in this repository; the stubs are integration seams.
 
@@ -115,7 +133,7 @@ createHttpAdapter(adapter).listen(8080);
 
 ## Project
 
-- [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [Trademarks](TRADEMARKS.md) · [NOTICE](NOTICE)
+- [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [Trademarks](TRADEMARKS.md) · [NOTICE](NOTICE) · [Changelog](CHANGELOG.md)
 - *Naming:* **Panini** is the umbrella for People of Product's open-source work for India's digital public infrastructure (see the sibling Panini project). **Krediwall** is this product.
 
 ## License

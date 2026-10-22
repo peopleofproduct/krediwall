@@ -24,6 +24,43 @@ Two deployment shapes, same engine:
 Whichever shape you pick, the verdict is synchronous: ALLOW, REVIEW or
 BLOCK with per-rule reasons and `elapsedMicros`.
 
+### The 20-line version: reference gateway
+
+`examples/reference-gateway.mjs` is a complete, copyable deployment —
+the same wiring this guide describes, running from environment variables:
+
+```bash
+npm run build
+KREDIWALL_RULES_CONFIG=rules.json \
+KREDIWALL_FRI_SNAPSHOT=/var/feeds/fri-latest.json \
+KREDIWALL_FRI_HMAC_KEY="$FRI_KEY" \
+KREDIWALL_STATE_FILE=/var/lib/krediwall/state.json \
+node examples/reference-gateway.mjs
+```
+
+It loads rules from a config file (or the preset), ingests the FRI
+snapshot, restores engine state if the file exists, saves state on a
+timer and on `SIGTERM`, and serves `/v1/evaluate`, `/healthz` and
+`/metrics`. Clone it and adjust; it is a starting point, not the product.
+
+### Tuning thresholds without a deploy
+
+`loadRulesConfigFile(path)` (in `@krediwall/telemetry-rules`) builds the
+starter rules from a strictly validated JSON file — unknown field names
+throw, so `windowSecs` fails loudly instead of silently keeping a
+default. Absent blocks omit the rule. Schema:
+
+```jsonc
+{
+  "version": 1,
+  "velocitySpike": { "maxDistinctMerchants": 4, "windowMs": 60000,
+    "maxDistinctGeoCells": 2, "capacity": 32, "maxTrackedLines": 200000 },
+  "muleDrain": { "limitBurnRatio": 0.9, "windowMs": 60000,
+    "ticketFloorPaise": 4500000, "ticketCeilPaise": 5000000,
+    "minRepeats": 2, "freshLineMaxAgeMs": 86400000 }
+}
+```
+
 ## Failure behaviour
 
 - **A throwing rule is isolated.** It is skipped, recorded in
@@ -37,6 +74,26 @@ BLOCK with per-rule reasons and `elapsedMicros`.
 - **Missing signals degrade gracefully.** No `geoCell` → the geo leg of
   velocity-spike is skipped. Payee VPA not a phone number → feed checks
   don't apply. Unchecked is reported, not hidden.
+
+## Observability
+
+The engine counts everything you'd want on a dashboard:
+
+- `GET /metrics` on the HTTP gateway serves **Prometheus text** —
+  evaluations, verdicts, per-rule hits and errors, hook errors, and each
+  rule's internal counters (`trackedLines`, `maxTrackedLines`,
+  `evictedLines`). In-process deployments can render the same text with
+  `renderPrometheus(adapter.metrics(), adapter.ruleStats())` and hand it
+  to any monitoring stack — nothing is Prometheus-specific inside.
+- `evaluation.degraded` is the big red flag: true whenever the verdict
+  was computed with malformed input or a throwing rule. Alert on it.
+- **`evictedLines` is the "notebook too small" alarm.** When it climbs,
+  your `maxTrackedLines` cap is below the active-line population and
+  evicted lines restart their history — the rules go temporarily blind on
+  exactly the lines churning most. Raise the cap; state is ~1.4 KB per
+  line, so 1M lines costs ~1.4 GB of typed arrays. Every verdict also
+  flows through `onEvaluation` — keep those records: they are the
+  labelled dataset you will eventually calibrate thresholds against.
 
 ## The audit seam (compliance)
 
@@ -67,9 +124,11 @@ Two mitigations, both supported:
   `{ version, exportedAtMs, rules }` document; `restoreState()` on a fresh
   instance reloads it, preserving LRU order and ring contents. Store the
   snapshot wherever you like (file, object store, Redis) — the engine
-  never writes anywhere itself. The seam is deliberately *not* exposed on
-  the HTTP route: state contains hashed identifiers and does not belong
-  on a network surface.
+  never writes anywhere itself. For a plain file, the adapter's
+  `saveStateToFile`/`restoreStateFromFile` do an atomic temp-file write
+  and a shape check on read (the reference gateway uses these). The seam
+  is deliberately *not* exposed on the HTTP route: state contains hashed
+  identifiers and does not belong on a network surface.
 - **Warm replicas.** Run N stateless replicas behind the switch; a replica
   that starts cold just sees less history for its first window. Velocity
   windows are short (default 60 s) so warm-up cost is bounded.
@@ -95,7 +154,7 @@ transaction.
 | `maxTrackedLines` (default 100k per rule) | LRU eviction — evicted lines restart their history, briefly weakening rules on them. |
 | Ring capacity (default 32 txns/line) | Oldest in-window entries drop; drain burn under-counts (errs toward not flagging). |
 | Out-of-order timestamps | Tolerated; a stale entry can hide a newer one behind it → window counts under-report. |
-| `ruleErrors` non-empty | Degraded coverage — the verdict may be weaker than designed. Treat as an ops alert. |
+| `ruleErrors` non-empty | `degraded: true` on the result and `krediwall_rule_error_total` on /metrics — the verdict may be weaker than designed. Ops alert. |
 | Graph seam | No evaluator wired → `checked: false`. Do not interpret as "clean". |
 
 ## What this does not give you

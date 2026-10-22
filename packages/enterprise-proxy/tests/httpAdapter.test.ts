@@ -79,6 +79,17 @@ describe('httpAdapter', () => {
     expect(res.status).toBe(400);
   });
 
+  it('serves Prometheus metrics', async () => {
+    const res = await fetch(`${base}/metrics`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/plain');
+    const text = await res.text();
+    expect(text).toContain('krediwall_evaluations_total');
+    expect(text).toContain('krediwall_verdict_total{verdict="ALLOW"}');
+    expect(text).toContain('krediwall_rule_hit_total{rule="telemetry.velocity-spike"}');
+    expect(text).toContain('krediwall_rule_stat_trackedLines{rule="telemetry.velocity-spike"}');
+  });
+
   it('404s unknown routes', async () => {
     const res = await fetch(`${base}/nope`);
     expect(res.status).toBe(404);

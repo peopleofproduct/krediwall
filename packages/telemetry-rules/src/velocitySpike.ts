@@ -116,6 +116,13 @@ export function velocitySpike(options: VelocitySpikeOptions): Rule {
     reset() {
       lines.clear();
     },
+    stats() {
+      return {
+        trackedLines: lines.size,
+        maxTrackedLines: lines.maxEntries,
+        evictedLines: lines.evictedCount,
+      };
+    },
     exportState(): VelocityState {
       const out: Array<[string, { vpa: Array<[number, number]>; geo: Array<[number, number]> | null }]> = [];
       for (const [key, line] of lines.entriesLeastRecentFirst()) {

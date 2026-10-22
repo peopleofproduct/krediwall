@@ -1,6 +1,14 @@
-import type { Evaluation, FirewallEngineOptions, Rule, Transaction } from '@krediwall/core';
+import type {
+  EngineMetrics,
+  EngineSnapshot,
+  Evaluation,
+  FirewallEngineOptions,
+  Rule,
+  Transaction,
+} from '@krediwall/core';
 import { FirewallEngine } from '@krediwall/core';
 import type { GraphEvaluator, GraphQuery, GraphSignal } from './graph';
+import { readStateFile, writeStateFile } from './stateFile';
 
 /** Throughput accounting for the commercial billing hook. */
 export interface MeterWindow {
@@ -90,12 +98,36 @@ export class KrediwallAdapter {
     return this.meter;
   }
 
+  /** Lifetime engine counters for observability (see also GET /metrics). */
+  metrics(): EngineMetrics {
+    return this.engine.metrics;
+  }
+
+  /** Per-rule internal counters keyed by rule name (tracked lines, evictions). */
+  ruleStats(): Readonly<Record<string, Readonly<Record<string, number>>>> {
+    return this.engine.ruleStats();
+  }
+
   /** Engine state for restart warm-up / replica seeding. */
-  exportState() {
+  exportState(): EngineSnapshot {
     return this.engine.exportState();
   }
 
-  restoreState(snapshot: Parameters<FirewallEngine['restoreState']>[0]): void {
+  restoreState(snapshot: EngineSnapshot): void {
     this.engine.restoreState(snapshot);
+  }
+
+  /** Persist `exportState()` to disk atomically. */
+  saveStateToFile(path: string): void {
+    writeStateFile(this.engine.exportState(), path);
+  }
+
+  /**
+   * Load a state file previously written by `saveStateToFile` and restore
+   * it. Throws when the file is missing or malformed — callers should
+   * treat that as a cold start, not a fatal error.
+   */
+  restoreStateFromFile(path: string): void {
+    this.engine.restoreState(readStateFile(path));
   }
 }

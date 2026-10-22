@@ -8,4 +8,4 @@ export type {
   Transaction,
 } from './types';
 export { FirewallEngine } from './engine';
-export type { EngineSnapshot, FirewallEngineOptions } from './engine';
+export type { EngineMetrics, EngineSnapshot, FirewallEngineOptions } from './engine';

@@ -2,6 +2,7 @@ import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { createServer } from 'node:http';
 import type { Transaction } from '@krediwall/core';
 import type { KrediwallAdapter } from './krediwallAdapter';
+import { renderPrometheus } from './metrics';
 
 const MAX_BODY_BYTES = 16 * 1024;
 
@@ -61,11 +62,19 @@ const isTransaction = (v: unknown): v is Transaction => {
  *
  *   POST /v1/evaluate  Transaction JSON → Evaluation JSON (200) or error (4xx)
  *   GET  /healthz      → {"status":"ok"}
+ *   GET  /metrics      → Prometheus text exposition of engine + rule counters
  */
 export function createHttpAdapter(adapter: KrediwallAdapter): Server {
   return createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/healthz') {
       send(res, 200, { status: 'ok' });
+      return;
+    }
+
+    if (req.method === 'GET' && req.url === '/metrics') {
+      const text = renderPrometheus(adapter.metrics(), adapter.ruleStats());
+      res.writeHead(200, { 'content-type': 'text/plain; version=0.0.4; charset=utf-8' });
+      res.end(text);
       return;
     }
 

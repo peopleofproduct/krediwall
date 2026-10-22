@@ -27,6 +27,22 @@ export interface EngineSnapshot {
   readonly rules: Readonly<Record<string, unknown>>;
 }
 
+/** Lifetime counters for observability. Read rarely; the hot path only increments. */
+export interface EngineMetrics {
+  readonly evaluated: number;
+  readonly verdicts: {
+    readonly allow: number;
+    readonly review: number;
+    readonly block: number;
+  };
+  /** Positive firings per rule name. */
+  readonly ruleHits: Readonly<Record<string, number>>;
+  /** Throws per rule name. Nonzero means degraded coverage — alert on it. */
+  readonly ruleErrors: Readonly<Record<string, number>>;
+  /** Times a hook threw. Nonzero means audit records were dropped. */
+  readonly hookErrors: number;
+}
+
 const isWellFormed = (txn: Transaction): boolean =>
   typeof txn.txnId === 'string' &&
   typeof txn.creditLineId === 'string' &&
@@ -62,11 +78,20 @@ export class FirewallEngine {
   private readonly onRuleError?: FirewallEngineOptions['onRuleError'];
   private evaluated = 0;
   private hookErrors = 0;
+  private allowCount = 0;
+  private reviewCount = 0;
+  private blockCount = 0;
+  private readonly hitCounts = new Map<string, number>();
+  private readonly errorCounts = new Map<string, number>();
 
   constructor(rules: readonly Rule[], options?: FirewallEngineOptions) {
     this.rules = rules.slice();
     this.onEvaluation = options?.onEvaluation;
     this.onRuleError = options?.onRuleError;
+    for (const rule of this.rules) {
+      this.hitCounts.set(rule.name, 0);
+      this.errorCounts.set(rule.name, 0);
+    }
   }
 
   get evaluatedCount(): number {
@@ -76,6 +101,36 @@ export class FirewallEngine {
   /** Times `onEvaluation` threw. Nonzero means audit records were dropped. */
   get hookErrorCount(): number {
     return this.hookErrors;
+  }
+
+  /** Lifetime counters — a fresh object per call; read on a scrape cadence. */
+  get metrics(): EngineMetrics {
+    const ruleHits: Record<string, number> = {};
+    const ruleErrors: Record<string, number> = {};
+    for (const rule of this.rules) {
+      ruleHits[rule.name] = this.hitCounts.get(rule.name) ?? 0;
+      ruleErrors[rule.name] = this.errorCounts.get(rule.name) ?? 0;
+    }
+    return {
+      evaluated: this.evaluated,
+      verdicts: { allow: this.allowCount, review: this.reviewCount, block: this.blockCount },
+      ruleHits,
+      ruleErrors,
+      hookErrors: this.hookErrors,
+    };
+  }
+
+  /**
+   * Per-rule internal counters (tracked lines, evictions) keyed by rule
+   * name, for rules that expose `stats()`. Empty when none do.
+   */
+  ruleStats(): Readonly<Record<string, Readonly<Record<string, number>>>> {
+    const out: Record<string, Readonly<Record<string, number>>> = {};
+    for (const rule of this.rules) {
+      const stats = rule.stats?.();
+      if (stats !== undefined) out[rule.name] = stats;
+    }
+    return out;
   }
 
   evaluate(txn: Transaction): Evaluation {
@@ -97,6 +152,7 @@ export class FirewallEngine {
           hit = rule.evaluate(txn, ctx);
         } catch (e) {
           (errors ??= []).push({ rule: rule.name, message: errorMessage(e) });
+          this.errorCounts.set(rule.name, (this.errorCounts.get(rule.name) ?? 0) + 1);
           try {
             this.onRuleError?.(rule.name, e);
           } catch {
@@ -105,6 +161,7 @@ export class FirewallEngine {
           continue;
         }
         if (hit !== null) {
+          this.hitCounts.set(hit.rule, (this.hitCounts.get(hit.rule) ?? 0) + 1);
           (hits ??= []).push(hit);
           if (severity(hit.verdict) > severity(worst)) {
             worst = hit.verdict;
@@ -115,10 +172,14 @@ export class FirewallEngine {
     }
 
     this.evaluated += 1;
+    if (worst === Verdict.Block) this.blockCount += 1;
+    else if (worst === Verdict.Review) this.reviewCount += 1;
+    else this.allowCount += 1;
     const evaluation: Evaluation = {
       verdict: worst,
       hits: hits ?? EMPTY_HITS,
       ruleErrors: errors ?? EMPTY_ERRORS,
+      degraded: errors !== null,
       elapsedMicros: (performance.now() - start) * 1000,
     };
     if (this.onEvaluation !== undefined) {
@@ -163,6 +224,15 @@ export class FirewallEngine {
   reset(): void {
     this.evaluated = 0;
     this.hookErrors = 0;
-    for (const rule of this.rules) rule.reset?.();
+    this.allowCount = 0;
+    this.reviewCount = 0;
+    this.blockCount = 0;
+    this.hitCounts.clear();
+    this.errorCounts.clear();
+    for (const rule of this.rules) {
+      this.hitCounts.set(rule.name, 0);
+      this.errorCounts.set(rule.name, 0);
+      rule.reset?.();
+    }
   }
 }
