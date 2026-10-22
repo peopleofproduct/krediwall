@@ -1,0 +1,19 @@
+{
+  "name": "@vayu/enterprise-proxy",
+  "version": "0.1.0",
+  "description": "Framework-neutral adapter that embeds the Vayu engine in a payment-processor switch pipeline, with hooks for commercial graph/billing features.",
+  "license": "Apache-2.0",
+  "author": "Kapil",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@vayu/core": "0.1.0",
+    "@vayu/telemetry-rules": "0.1.0"
+  }
+}

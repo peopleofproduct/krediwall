@@ -1,0 +1,15 @@
+{
+  "name": "@vayu/core",
+  "version": "0.1.0",
+  "description": "Core evaluation loop and verdict state machine for the Vayu Credit-on-UPI fraud firewall.",
+  "license": "Apache-2.0",
+  "author": "Kapil",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  }
+}
