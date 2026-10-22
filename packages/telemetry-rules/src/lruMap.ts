@@ -59,6 +59,16 @@ export class LruMap<K, V> {
     this.tail = null;
   }
 
+  /**
+   * Iterate entries least-recently-used first. Serialising in this order
+   * and restoring with `set` preserves the recency order.
+   */
+  *entriesLeastRecentFirst(): IterableIterator<[K, V]> {
+    for (let node = this.tail; node !== null; node = node.prev) {
+      yield [node.key, node.value];
+    }
+  }
+
   private touch(node: Node<K, V>): void {
     if (this.head === node) return;
     this.unlink(node);

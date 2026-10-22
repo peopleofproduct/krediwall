@@ -43,6 +43,9 @@ export interface MuleDrainOptions {
  * terminals short-circuit the rule because this pattern is about
  * unestablished merchant identity.
  */
+/** Snapshot form: `[creditLineId, ringEntries]` pairs, LRU-order preserved. */
+type MuleDrainState = ReadonlyArray<readonly [string, Array<[number, number]>]>;
+
 export function muleDrain(options: MuleDrainOptions): Rule {
   const name = 'telemetry.mule-drain';
   const capacity = options.capacity ?? 32;
@@ -92,6 +95,24 @@ export function muleDrain(options: MuleDrainOptions): Rule {
     },
     reset() {
       lines.clear();
+    },
+    exportState(): MuleDrainState {
+      const out: Array<[string, Array<[number, number]>]> = [];
+      for (const [key, ring] of lines.entriesLeastRecentFirst()) {
+        out.push([key, ring.toEntries()]);
+      }
+      return out;
+    },
+    restoreState(state: unknown): void {
+      if (!Array.isArray(state)) throw new Error('mule-drain: bad snapshot shape');
+      lines.clear();
+      for (const entry of state as MuleDrainState) {
+        const [key, entries] = entry;
+        if (typeof key !== 'string' || !Array.isArray(entries)) continue;
+        const ring = new RingBuffer(capacity);
+        ring.loadEntries(entries);
+        lines.set(key, ring);
+      }
     },
   };
 }

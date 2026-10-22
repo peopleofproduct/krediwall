@@ -24,6 +24,27 @@ export class RingBuffer {
     return this.size;
   }
 
+  /** Entries oldest→newest as `(timestampMs, aux)` pairs — the snapshot form. */
+  toEntries(): Array<[number, number]> {
+    const out: Array<[number, number]> = new Array(this.size);
+    for (let i = 0; i < this.size; i++) {
+      const idx = (this.head - this.size + i + this.capacity) % this.capacity;
+      out[i] = [this.stamps[idx]!, this.aux[idx]!];
+    }
+    return out;
+  }
+
+  /**
+   * Replace contents from oldest→newest `(timestampMs, aux)` pairs. More
+   * than `capacity` entries keeps only the newest `capacity` — same as if
+   * they had been pushed in order.
+   */
+  loadEntries(entries: Iterable<readonly [number, number]>): void {
+    this.head = 0;
+    this.size = 0;
+    for (const [ts, aux] of entries) this.push(ts, aux);
+  }
+
   push(timestampMs: number, aux: number): void {
     this.stamps[this.head] = timestampMs;
     this.aux[this.head] = aux;

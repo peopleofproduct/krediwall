@@ -11,6 +11,7 @@ Terms used across the Krediwall docs and code, in alphabetical order.
 | **CLOU** | Credit Line on UPI: a pre-sanctioned bank credit line linked to UPI as a funding account (RBI circular of 4 Sep 2023). |
 | **DIP** | Digital Intelligence Platform: DoT's platform for sharing telecom-misuse and fraud intelligence with onboarded stakeholders such as banks, UPI service providers, telecom operators and law enforcement. |
 | **DPI** | Digital Public Infrastructure — India's public digital rails. In this repo it does **not** mean deep packet inspection. |
+| **Engine snapshot** | The JSON-safe state document from `exportState()`, restored with `restoreState()` so a restarted process or warm replica keeps per-line rule history. |
 | **EWS / RFA** | Early Warning Signals and Red-Flagged Accounts: the framework RBI's fraud-risk directions require regulated entities to run, integrated with their operating systems. |
 | **FMR** | The online portal through which regulated entities report frauds to RBI, within 14 days of classifying an incident as fraud. |
 | **FRI** | Financial Fraud Risk Indicator: a DoT metric classifying a **mobile number** as Medium, High or Very High risk of financial fraud, delivered to stakeholders through DIP. |

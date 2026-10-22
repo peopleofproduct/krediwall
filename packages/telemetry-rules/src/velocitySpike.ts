@@ -34,6 +34,14 @@ interface LineRings {
   geo: RingBuffer | null;
 }
 
+/**
+ * Snapshot form: `[creditLineId, rings]` pairs ordered least-recently-used
+ * first, so `restoreState` reproduces the same eviction order.
+ */
+type VelocityState = ReadonlyArray<
+  readonly [string, { readonly vpa: Array<[number, number]>; readonly geo: Array<[number, number]> | null }]
+>;
+
 /** Count distinct values collected in `scratch[0..n)`, zero-alloc. */
 function countDistinct(scratch: Float64Array, n: number): number {
   let distinct = 0;
@@ -107,6 +115,29 @@ export function velocitySpike(options: VelocitySpikeOptions): Rule {
     },
     reset() {
       lines.clear();
+    },
+    exportState(): VelocityState {
+      const out: Array<[string, { vpa: Array<[number, number]>; geo: Array<[number, number]> | null }]> = [];
+      for (const [key, line] of lines.entriesLeastRecentFirst()) {
+        out.push([key, { vpa: line.vpa.toEntries(), geo: line.geo?.toEntries() ?? null }]);
+      }
+      return out;
+    },
+    restoreState(state: unknown): void {
+      if (!Array.isArray(state)) throw new Error('velocity-spike: bad snapshot shape');
+      lines.clear();
+      for (const entry of state as VelocityState) {
+        const [key, rings] = entry;
+        if (typeof key !== 'string' || rings === null || !Array.isArray(rings.vpa)) continue;
+        const vpa = new RingBuffer(capacity);
+        vpa.loadEntries(rings.vpa);
+        let geo: RingBuffer | null = null;
+        if (Array.isArray(rings.geo)) {
+          geo = new RingBuffer(capacity);
+          geo.loadEntries(rings.geo);
+        }
+        lines.set(key, { vpa, geo });
+      }
     },
   };
 }

@@ -90,6 +90,8 @@ createHttpAdapter(adapter).listen(8080);
 - **Latency target: under 5 ms per verdict.** It is an engineering budget we chose so the in-process check is negligible next to the network hops around it; it is not a regulatory figure. `npm run bench` (2M evaluations over 100k credit lines, starter rule set, single thread) measured, on a Linux x64 cloud VM (8 vCPU Intel Xeon, Node 24), **p50 ≈ 0.9 µs, p99 ≈ 2.6–2.9 µs, p99.9 ≈ 6.7–7.4 µs**; across three runs 0–1 of 2M evaluations exceeded 5 ms (worst case 3.8–5.3 ms) and 23–37 exceeded 1 ms. On a heavily loaded laptop the p99 was 9–15 µs and rare outliers reached tens of ms alongside V8 garbage-collection pauses. It is a measurement, not a hard real-time guarantee; run it on your own hardware.
 - **Zero runtime dependencies** in `core` and `telemetry-rules`; everything uses Node built-ins.
 - **Allocation-light, bounded state.** Rules keep per-credit-line history in fixed-size typed-array rings (about 1.4 KB per tracked line at default settings) and the set of tracked lines is LRU-capped (`maxTrackedLines`, default 100,000). Each call still allocates a couple of small objects; it is not allocation-free.
+- **Failure isolation and an audit seam.** A rule that throws is skipped, recorded in `evaluation.ruleErrors` and surfaced via an `onRuleError` hook — it cannot take the pipeline down, and its absence is visible. `onEvaluation` emits every verdict for your audit queue; malformed transactions return REVIEW, never a silent ALLOW.
+- **Restart-safe.** `exportState()`/`restoreState()` carry per-line history across restarts and replica warm-ups — see the [integration guide](docs/integration-guide.md).
 - **Data minimisation, not a privacy guarantee.** Rules keep 32-bit bucket hashes instead of raw VPAs. That is a fast bucketing hash, not cryptographic — low-entropy identifiers can be recovered by dictionary search. Fraud-feed lookups use keyed HMAC digests. Everything runs in your process; the library logs nothing and sends nothing. None of this is a compliance certification.
 - **Open core.** The engine, starter rules and open adapters are Apache-2.0. Graph-network scoring and automated regulatory reporters are not in this repository; the stubs are integration seams.
 
@@ -105,6 +107,8 @@ createHttpAdapter(adapter).listen(8080);
 
 - [Executive summary](docs/executive-summary.md) — one page for risk, fraud and product leads
 - [Problem statement](docs/problem-statement.md) — the threat model and why credit-funded UPI is different
+- [Integration guide](docs/integration-guide.md) — production deployment, restarts, HA, feeds and limits
+- [Feed snapshot format](docs/feed-snapshot-format.md) — the FRI/DIP JSON file the loader accepts
 - [Market opportunity](docs/market-opportunity.md) — volumes, fraud data and timing, with citations
 - [Commercial strategy](docs/commercial-strategy.md) — open-core split and pricing
 - [Glossary](docs/glossary.md) — CLOU, VPA, PSP, TPAP, FRI, DIP, EWS, FMR and more
