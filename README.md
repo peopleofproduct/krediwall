@@ -57,6 +57,10 @@ npm run demo
  │  FirewallEngine runs rules in order and stops at the first BLOCK           │
  │    • velocity-spike  — too many distinct payees / places inside a window   │
  │    • mule-drain      — repeat tickets burning most of the limit            │
+ │    • first-payee     — payee never seen on this line + large limit fraction│
+ │    • structuring     — repeat tickets clustered just under a band          │
+ │    • dormant-reactivation — a line spending again after a long silence     │
+ │    • odd-hours       — night-band activity on a line with no history there │
  │    • feed-reputation — payee mobile number flagged in a fraud-feed snapshot│
  │    • your own rules  — implement the `Rule` interface                      │
  └──────────────▶  ALLOW | REVIEW | BLOCK  + reasons + elapsedMicros  ────────┘
@@ -88,6 +92,8 @@ packages/
                                                    plus stubs where commercial modules plug in
 examples/demo.mjs       npm run demo
 examples/reference-gateway.mjs   npm run gateway — a complete deployment you can copy
+examples/translate-dip-export.mjs  DIP export → feed snapshot translator template
+tools/replay.mjs        npm run replay    replay a labelled stream, report catch rate / FP / latency
 benchmarks/run.mjs      npm run bench     latency measurement
 benchmarks/soak.mjs     npm run soak      sustained-load boundedness check
 ```
@@ -117,7 +123,7 @@ createHttpAdapter(adapter).listen(8080);
 
 - No machine-learning scoring, device or behavioural-biometric signals, or consortium data.
 - No case management, alert queue or analyst workflow.
-- The starter thresholds are illustrative; there is no public labelled dataset to tune them on, so calibrate against your own traffic.
+- The starter thresholds are illustrative; there is no public labelled dataset to tune them on, so calibrate against your own traffic — `npm run replay` exists for exactly that (labelled JSONL in, catch rate and false-positive rate out).
 - Fraud feeds are snapshots you supply. DoT's FRI is keyed by **mobile number** and delivered to onboarded stakeholders through the Digital Intelligence Platform; this library does not call any government API. Phone-number VPAs match directly; merchant handles need your `resolveMobile` registry lookup or `vpa`-keyed feed rows — payees matching neither pass through unchecked.
 - Merchant-side signals (MCC risk, terminal reputation) are limited to a verified/unverified flag.
 

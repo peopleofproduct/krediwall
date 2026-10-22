@@ -191,6 +191,7 @@ export function feedReputationRule(
             rule: name,
             verdict: Verdict.Block,
             reason: `payee identifier listed on ${feed.source} feed`,
+            evidence: { listed: 1, feed: feed.source },
           };
         }
         if (entry.riskScore > maxScore) maxScore = entry.riskScore;
@@ -200,6 +201,7 @@ export function feedReputationRule(
           rule: name,
           verdict: Verdict.Review,
           reason: `payee identifier feed risk score ${maxScore.toFixed(2)}`,
+          evidence: { riskScore: maxScore, threshold: reviewThreshold },
         };
       }
       return null;

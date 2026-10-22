@@ -79,6 +79,27 @@ describe('httpAdapter', () => {
     expect(res.status).toBe(400);
   });
 
+  it('answers readiness checks — 200 clean, 503 with problems', async () => {
+    let problems: string[] = [];
+    const probeServer = createHttpAdapter(
+      new KrediwallAdapter([], { readinessProbe: () => problems }),
+    );
+    await new Promise<void>((resolve) => probeServer.listen(0, '127.0.0.1', resolve));
+    const { port } = probeServer.address() as AddressInfo;
+    try {
+      const ok = await fetch(`http://127.0.0.1:${port}/readyz`);
+      expect(ok.status).toBe(200);
+      problems = ['fri snapshot stale'];
+      const bad = await fetch(`http://127.0.0.1:${port}/readyz`);
+      expect(bad.status).toBe(503);
+      expect(await bad.json()).toEqual({ ready: false, problems: ['fri snapshot stale'] });
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        probeServer.close((err) => (err ? reject(err) : resolve())),
+      );
+    }
+  });
+
   it('serves Prometheus metrics', async () => {
     const res = await fetch(`${base}/metrics`);
     expect(res.status).toBe(200);

@@ -61,13 +61,25 @@ const isTransaction = (v: unknown): v is Transaction => {
  * hot path.
  *
  *   POST /v1/evaluate  Transaction JSON → Evaluation JSON (200) or error (4xx)
- *   GET  /healthz      → {"status":"ok"}
+ *   GET  /healthz      → {"status":"ok"} — process is up
+ *   GET  /readyz       → 200 when the adapter's readinessProbe reports no
+ *                        problems, 503 with the problem list otherwise
  *   GET  /metrics      → Prometheus text exposition of engine + rule counters
  */
 export function createHttpAdapter(adapter: KrediwallAdapter): Server {
   return createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/healthz') {
       send(res, 200, { status: 'ok' });
+      return;
+    }
+
+    if (req.method === 'GET' && req.url === '/readyz') {
+      const problems = adapter.readinessProblems();
+      if (problems.length === 0) {
+        send(res, 200, { ready: true });
+      } else {
+        send(res, 503, { ready: false, problems });
+      }
       return;
     }
 

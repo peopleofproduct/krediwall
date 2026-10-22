@@ -6,7 +6,9 @@ const { KrediwallAdapter } = require('@krediwall/enterprise-proxy');
 const { creditOnUpiRules } = require('@krediwall/telemetry-rules');
 const { feedReputationRule, friEntry, friFeed } = require('@krediwall/dpi-adapters');
 
-const T0 = Date.now();
+// Fixed daytime-IST anchor: replay output is identical whenever the demo
+// runs, and normal traffic can't trip the odd-hours heuristic at night.
+const T0 = Date.UTC(2025, 9, 15, 8, 0, 0); // 15 Oct 2025, 13:30 IST
 const rupees = (paise) => `₹${(paise / 100).toLocaleString('en-IN')}`;
 const colour = (code, s) => (process.stdout.isTTY ? `\u001b[${code}m${s}\u001b[0m` : s);
 const VERDICT_COLOUR = { ALLOW: '32', REVIEW: '33', BLOCK: '31' };

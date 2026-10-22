@@ -40,8 +40,15 @@ node examples/reference-gateway.mjs
 
 It loads rules from a config file (or the preset), ingests the FRI
 snapshot, restores engine state if the file exists, saves state on a
-timer and on `SIGTERM`, and serves `/v1/evaluate`, `/healthz` and
-`/metrics`. Clone it and adjust; it is a starting point, not the product.
+timer and on `SIGTERM`, and serves `/v1/evaluate`, `/healthz`, `/readyz`
+and `/metrics`. Clone it and adjust; it is a starting point, not the product.
+
+`/readyz` is the load-balancer probe: it returns 200 with `{ ready: true }`
+or 503 with `{ ready: false, problems: [...] }` from an optional
+`readinessProbe` you pass to `KrediwallAdapter` — report things like
+"fri snapshot stale", "state file unreadable" or "warm-up incomplete" so
+orchestrators hold traffic until the instance is actually usable.
+`/healthz` only says the process is alive.
 
 ### Tuning thresholds without a deploy
 
@@ -57,9 +64,30 @@ default. Absent blocks omit the rule. Schema:
     "maxDistinctGeoCells": 2, "capacity": 32, "maxTrackedLines": 200000 },
   "muleDrain": { "limitBurnRatio": 0.9, "windowMs": 60000,
     "ticketFloorPaise": 4500000, "ticketCeilPaise": 5000000,
-    "minRepeats": 2, "freshLineMaxAgeMs": 86400000 }
+    "minRepeats": 2, "freshLineMaxAgeMs": 86400000 },
+  "firstPayee": { "minAmountRatio": 0.5, "verdict": "REVIEW" },
+  "dormantReactivation": { "dormantMs": 7776000000, "minAmountPaise": 100000 },
+  "structuring": { "ticketFloorPaise": 9000000, "ticketCeilPaise": 10000000,
+    "windowMs": 60000, "minRepeats": 3 },
+  "oddHours": { "oddHoursIst": [0, 5], "minAmountRatio": 0.1 }
 }
 ```
+
+### Replay and calibration
+
+Before trusting BLOCK rates, replay your own traffic:
+
+```bash
+node tools/replay.mjs --input=your-transactions.jsonl
+```
+
+One transaction per line (same shape as `/v1/evaluate`), optionally with
+`"expect": "ALLOW" | "REVIEW" | "BLOCK"`. The tool reports verdict counts,
+per-rule hits, a confusion matrix, catch rate, false-positive rate and
+latency — `examples/fixtures/replay-sample.jsonl` is a labelled example.
+Edit thresholds in `rules.json`, re-run, compare. That loop is how
+"illustrative" defaults become calibrated ones; keep the labelled streams
+because they double as your regression suite when rules change.
 
 ## Failure behaviour
 
@@ -74,13 +102,20 @@ default. Absent blocks omit the rule. Schema:
 - **Missing signals degrade gracefully.** No `geoCell` → the geo leg of
   velocity-spike is skipped. Payee VPA not a phone number → feed checks
   don't apply. Unchecked is reported, not hidden.
+- **Retries don't double-count.** Switches re-deliver transactions; if you
+  construct the engine with `dedupeCapacity`, a repeated `txnId` returns
+  the *original* `Evaluation` without running rules again — the ring
+  buffers never see the retry, so velocity and drain counts can't be
+  inflated by redelivery. Off by default (enable it; a real switch can
+  retry). Counted in `engine.metrics.deduped`.
 
 ## Observability
 
 The engine counts everything you'd want on a dashboard:
 
 - `GET /metrics` on the HTTP gateway serves **Prometheus text** —
-  evaluations, verdicts, per-rule hits and errors, hook errors, and each
+  evaluations, verdicts, per-rule hits and errors, hook errors, a
+  `krediwall_evaluation_micros` histogram of engine latency, and each
   rule's internal counters (`trackedLines`, `maxTrackedLines`,
   `evictedLines`). In-process deployments can render the same text with
   `renderPrometheus(adapter.metrics(), adapter.ruleStats())` and hand it
@@ -107,7 +142,11 @@ const engine = new FirewallEngine(rules, {
 `onEvaluation` is called **synchronously** on the hot path: hand the record
 to your own queue or writer and return — do not do I/O in the callback. A
 throwing hook is caught and counted in `engine.hookErrorCount` (nonzero =
-dropped audit records; alert on it). RBI's fraud-risk directions expect
+dropped audit records; alert on it). Every `RuleHit` may carry a structured
+`evidence` record alongside its `reason` — the counts, ratios and band
+values that produced the verdict — which is the machine-readable material
+an FMR filing or a dispute defence needs ("reason" strings are for humans).
+RBI's fraud-risk directions expect
 EWS fed from operating systems and FMR filings; `complianceHooks()` in
 `@krediwall/enterprise-proxy` encodes the CERT-In 6-hour and FMR 14-day
 deadlines as helpers. Automated reporting is a separate commercial module.
@@ -161,6 +200,8 @@ transaction.
 |---|---|
 | `maxTrackedLines` (default 100k per rule) | LRU eviction — evicted lines restart their history, briefly weakening rules on them. |
 | Ring capacity (default 32 txns/line) | Oldest in-window entries drop; drain burn under-counts (errs toward not flagging). |
+| `dedupeCapacity` (default off) | A repeated `txnId` returns the original verdict. Past the cap the oldest entry evicts; a replayed id then re-evaluates as if new. Size it above your retry window × throughput. |
+| Odd-hours / dormant history | Hour bitmap and last-activity timestamp are per-line state and restart only via snapshot — a cold start loses night-history context until lines re-accumulate it. |
 | Out-of-order timestamps | Tolerated; a stale entry can hide a newer one behind it → window counts under-report. |
 | `ruleErrors` non-empty | `degraded: true` on the result and `krediwall_rule_error_total` on /metrics — the verdict may be weaker than designed. Ops alert. |
 | Graph seam | No evaluator wired → `checked: false`. Do not interpret as "clean". |

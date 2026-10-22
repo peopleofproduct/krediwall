@@ -40,6 +40,7 @@ console.log(
 );
 
 // --- fraud feed -----------------------------------------------------------
+let feedStale = false;
 const snapshotPath = env('KREDIWALL_FRI_SNAPSHOT');
 if (snapshotPath !== undefined) {
   const key = env('KREDIWALL_FRI_HMAC_KEY');
@@ -51,6 +52,7 @@ if (snapshotPath !== undefined) {
   const result = loadFriSnapshotFile(feed, snapshotPath, {
     maxAgeMs: Number(env('KREDIWALL_FRI_MAX_AGE_MS') ?? 6 * 3_600_000),
   });
+  feedStale = result.stale;
   // Optional merchant-registry resolver: maps non-phone payee VPAs to
   // their onboarding mobile. In production this is your merchant DB, not
   // a file — the seam is identical.
@@ -69,7 +71,13 @@ if (snapshotPath !== undefined) {
 }
 
 // --- adapter + restart warm-up -------------------------------------------
-const adapter = new KrediwallAdapter(rules);
+// readinessProbe powers GET /readyz: a stale feed is a degraded-not-dead
+// state, surfaced to the load balancer rather than hidden in logs. The
+// engine dedupe window absorbs switch retries so replays can't double-count.
+const adapter = new KrediwallAdapter(rules, {
+  engine: { dedupeCapacity: 10_000 },
+  readinessProbe: () => (feedStale ? ['fri snapshot older than maxAgeMs'] : []),
+});
 if (statePath !== undefined && existsSync(statePath)) {
   try {
     adapter.restoreStateFromFile(statePath);
@@ -92,7 +100,7 @@ if (statePath !== undefined) {
 // --- HTTP surface ---------------------------------------------------------
 const server = createHttpAdapter(adapter);
 server.listen(port, () => {
-  console.log(`listening on :${port}  — POST /v1/evaluate · GET /healthz · GET /metrics`);
+  console.log(`listening on :${port}  — POST /v1/evaluate · GET /healthz · GET /readyz · GET /metrics`);
 });
 
 const shutdown = (signal) => {

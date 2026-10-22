@@ -45,6 +45,13 @@ export interface RuleHit {
   readonly rule: string;
   readonly verdict: Verdict;
   readonly reason: string;
+  /**
+   * Structured evidence behind `reason` — the numbers that produced the
+   * firing (counts, ratios, bands). Kept flat and JSON-safe so verdict
+   * records can justify a decision in an audit or FMR filing without
+   * re-parsing prose.
+   */
+  readonly evidence?: Readonly<Record<string, number | string>>;
 }
 
 /** A rule that threw inside `evaluate()`. Recorded and reported, never thrown. */

@@ -78,6 +78,38 @@ describe('rulesFromConfig', () => {
     expect(() => rulesFromConfig('x')).toThrow('must be an object');
     expect(() => rulesFromConfig({ ...FULL_CONFIG, version: 2 })).toThrow('version');
   });
+
+  it('builds the second-generation rules', () => {
+    const rules = rulesFromConfig({
+      version: 1,
+      firstPayee: { minAmountRatio: 0.6 },
+      dormantReactivation: { dormantMs: 90 * 86_400_000, verdict: 'BLOCK' },
+      structuring: {
+        ticketFloorPaise: 80_000_00,
+        ticketCeilPaise: 90_000_00,
+        windowMs: 60_000,
+      },
+      oddHours: { oddHoursIst: [0, 6] },
+    });
+    expect(rules.map((r) => r.name)).toEqual([
+      'telemetry.first-payee',
+      'telemetry.dormant-reactivation',
+      'telemetry.structuring',
+      'telemetry.odd-hours',
+    ]);
+  });
+
+  it('rejects a bad verdict string and a malformed hour band', () => {
+    expect(() =>
+      rulesFromConfig({ firstPayee: { verdict: 'WARN' } }),
+    ).toThrow('"verdict"');
+    expect(() =>
+      rulesFromConfig({ oddHours: { oddHoursIst: [0, 25] } }),
+    ).toThrow('oddHoursIst');
+    expect(() =>
+      rulesFromConfig({ structuring: { ticketFloorPaise: 100 } }),
+    ).toThrow('ticketCeilPaise');
+  });
 });
 
 describe('loadRulesConfigFile', () => {

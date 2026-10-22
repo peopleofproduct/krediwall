@@ -16,7 +16,8 @@
     "demo": "tsc -b && node examples/demo.mjs",
     "gateway": "tsc -b && node examples/reference-gateway.mjs",
     "bench": "tsc -b && node --expose-gc benchmarks/run.mjs",
-    "soak": "tsc -b && node benchmarks/soak.mjs"
+    "soak": "tsc -b && node benchmarks/soak.mjs",
+    "replay": "tsc -b && node tools/replay.mjs"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

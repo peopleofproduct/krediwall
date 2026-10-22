@@ -89,6 +89,12 @@ export function muleDrain(options: MuleDrainOptions): Rule {
           reason:
             `${(burned * 100).toFixed(1)}% of limit burned via ${bandTickets} ` +
             `repeat band tickets to unverified terminal${fresh ? '' : ' (stale credit line)'}`,
+          evidence: {
+            burnPct: Math.round(burned * 1000) / 10,
+            bandTickets,
+            windowMs: options.windowMs,
+            freshLine: fresh ? 1 : 0,
+          },
         };
       }
       return null;

@@ -96,6 +96,7 @@ export function velocitySpike(options: VelocitySpikeOptions): Rule {
           rule: name,
           verdict: Verdict.Block,
           reason: `${distinctVpas} distinct payee VPAs in ${options.windowMs}ms (limit ${options.maxDistinctMerchants})`,
+          evidence: { distinctVpas, windowMs: options.windowMs, limit: options.maxDistinctMerchants },
         };
       }
 
@@ -108,6 +109,11 @@ export function velocitySpike(options: VelocitySpikeOptions): Rule {
             rule: name,
             verdict: Verdict.Block,
             reason: `${distinctGeos} distinct geo cells in ${options.windowMs}ms (limit ${options.maxDistinctGeoCells})`,
+            evidence: {
+              distinctGeos,
+              windowMs: options.windowMs,
+              limit: options.maxDistinctGeoCells,
+            },
           };
         }
       }

@@ -29,6 +29,29 @@ versions may break APIs until a 1.0 is cut.
   merchant registry can map handles to mobiles.
 - `examples/translate-dip-export.mjs` — converts common DIP export shapes
   (CSV, JSON array, NDJSON) into the strict snapshot format.
+- **Four new detection rules** — `firstPayee` (first-seen payee drawing a
+  large limit fraction), `dormantReactivation` (line reactivating after a
+  dormant window), `structuring` (repeat tickets clustered under a band)
+  and `oddHours` (activity in a configurable IST night band on a line with
+  no history there). All bounded state, all `exportState`/`restoreState`,
+  all configurable via `rulesFromConfig`.
+- **Structured evidence** — every `RuleHit` may carry an `evidence` record
+  (counts, ratios, hours) alongside the human-readable `reason`, for
+  audit trails and FMR-style defence documentation.
+- **Transaction deduplication** — `FirewallEngine({ dedupeCapacity })`
+  returns the original `Evaluation` for a repeated `txnId` without
+  re-running rules, so switch retries cannot double-count rule state.
+- **Latency histogram** — `engine.metrics.latencyMicros` records
+  cumulative histogram buckets rendered as a Prometheus histogram on
+  `GET /metrics`.
+- **Readiness** — `GET /readyz` on the HTTP gateway returns 200/503 from
+  the adapter's optional `readinessProbe`, so orchestrators can hold
+  traffic until feed state and warm-up are usable.
+- **`npm run replay`** — `tools/replay.mjs` replays a labelled JSONL
+  transaction stream and reports per-rule hits, a confusion matrix,
+  catch rate, false-positive rate and latency — the harness for calibrating
+  thresholds against real traffic. Sample fixture:
+  `examples/fixtures/replay-sample.jsonl`.
 
 ## 0.1.0 — first tagged state
 

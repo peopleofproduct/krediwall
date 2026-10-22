@@ -251,3 +251,53 @@ describe('FirewallEngine metrics', () => {
     expect(m.ruleHits).toEqual({ 'hit.always': 0 });
   });
 });
+
+describe('FirewallEngine dedupe and latency', () => {
+  it('returns the original verdict for a repeated txnId without touching rule state', () => {
+    let evals = 0;
+    const counter: Rule = {
+      name: 'counter',
+      evaluate: () => {
+        evals += 1;
+        return evals > 1 ? { rule: 'counter', verdict: Verdict.Block, reason: 'again' } : null;
+      },
+    };
+    const engine = new FirewallEngine([counter], { dedupeCapacity: 100 });
+    const first = engine.evaluate(txn({ txnId: 'dup-1' }));
+    const second = engine.evaluate(txn({ txnId: 'dup-1' })); // retry — same id
+    expect(second).toBe(first); // identical Evaluation object
+    expect(evals).toBe(1); // rule never saw the retry
+    expect(engine.metrics.deduped).toBe(1);
+    // A different txnId evaluates normally and (for this test rule) blocks.
+    expect(engine.evaluate(txn({ txnId: 'new-1' })).verdict).toBe(Verdict.Block);
+  });
+
+  it('evicts the oldest dedupe entry past capacity', () => {
+    const engine = new FirewallEngine([], { dedupeCapacity: 2 });
+    engine.evaluate(txn({ txnId: 'a' }));
+    engine.evaluate(txn({ txnId: 'b' }));
+    engine.evaluate(txn({ txnId: 'c' })); // evicts 'a'
+    const again = engine.evaluate(txn({ txnId: 'a' }));
+    expect(engine.metrics.deduped).toBe(0); // 'a' was forgotten → fresh eval
+    expect(again.verdict).toBe(Verdict.Allow);
+  });
+
+  it('leaves dedupe off by default', () => {
+    const engine = new FirewallEngine([]);
+    engine.evaluate(txn({ txnId: 'x' }));
+    engine.evaluate(txn({ txnId: 'x' }));
+    expect(engine.metrics.deduped).toBe(0);
+    expect(engine.metrics.evaluated).toBe(2);
+  });
+
+  it('records evaluation latency into histogram buckets', () => {
+    const engine = new FirewallEngine([]);
+    engine.evaluate(txn({}));
+    engine.evaluate(txn({}));
+    const m = engine.metrics.latencyMicros;
+    const total = m.counts.reduce((a, c) => a + c, 0);
+    expect(total).toBe(2);
+    expect(m.sum).toBeGreaterThan(0);
+    expect(m.buckets.length).toBe(m.counts.length - 1); // last count is +Inf
+  });
+});
