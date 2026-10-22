@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { FeedEntry, FriLevel } from './feed';
+import type { FeedRow, FriLevel } from './feed';
 import { friEntry } from './feed';
 import type { InMemoryFeed } from './feed';
 
@@ -13,10 +13,14 @@ import type { InMemoryFeed } from './feed';
  *   "entries": [
  *     { "mobile": "9876543210", "level": "very_high" },   // DoT FRI band
  *     { "mobile": "9123456789", "listed": true },          // hard-listed
- *     { "mobile": "9988776655", "riskScore": 0.8 }          // custom 0..1
+ *     { "mobile": "9988776655", "riskScore": 0.8 },         // custom 0..1
+ *     { "vpa": "muleacct@ybl", "listed": true }             // account-keyed row
  *   ]
  * }
  * ```
+ *
+ * A row may carry `mobile`, `vpa` or both — mobiles for FRI-style feeds,
+ * VPAs for feeds that identify mule accounts directly.
  */
 export interface FriSnapshotFile {
   readonly version?: unknown;
@@ -50,29 +54,32 @@ export interface LoadSnapshotOptions {
 
 const FRI_LEVELS: ReadonlySet<string> = new Set(['medium', 'high', 'very_high']);
 
-const parseRow = (row: unknown): ({ mobile: string } & FeedEntry) | string => {
+const parseRow = (row: unknown): FeedRow | string => {
   if (typeof row !== 'object' || row === null) return 'row is not an object';
   const r = row as Record<string, unknown>;
-  if (typeof r['mobile'] !== 'string' || r['mobile'].length === 0) {
-    return 'missing/invalid mobile';
-  }
+  const mobile = typeof r['mobile'] === 'string' && r['mobile'].length > 0 ? r['mobile'] : null;
+  const vpa = typeof r['vpa'] === 'string' && r['vpa'].length > 0 ? r['vpa'] : null;
+  if (mobile === null && vpa === null) return 'row has no mobile or vpa identifier';
+  const id = mobile !== null ? { mobile } : {};
+  const ids = vpa !== null ? { ...id, vpa } : id;
+
   const listed = r['listed'] === true;
   if (listed) {
     const score =
       typeof r['riskScore'] === 'number' && Number.isFinite(r['riskScore'])
         ? Math.min(1, Math.max(0, r['riskScore']))
         : 1;
-    return { mobile: r['mobile'], listed: true, riskScore: score };
+    return { ...ids, listed: true, riskScore: score } as FeedRow;
   }
   if (r['level'] !== undefined) {
     if (typeof r['level'] !== 'string' || !FRI_LEVELS.has(r['level'])) {
       return `bad level ${JSON.stringify(r['level'])}`;
     }
-    return { mobile: r['mobile'], ...friEntry(r['level'] as FriLevel) };
+    return { ...ids, ...friEntry(r['level'] as FriLevel) } as FeedRow;
   }
   if (typeof r['riskScore'] === 'number' && Number.isFinite(r['riskScore'])) {
     if (r['riskScore'] < 0 || r['riskScore'] > 1) return 'riskScore out of range';
-    return { mobile: r['mobile'], listed: false, riskScore: r['riskScore'] };
+    return { ...ids, listed: false, riskScore: r['riskScore'] } as FeedRow;
   }
   return 'row carries no signal (need level, listed or riskScore)';
 };
@@ -83,7 +90,7 @@ const parseRow = (row: unknown): ({ mobile: string } & FeedEntry) | string => {
  */
 export function parseFriSnapshot(json: string): {
   readonly generatedAtMs: number | null;
-  readonly rows: ReadonlyArray<({ mobile: string } & FeedEntry)>;
+  readonly rows: readonly FeedRow[];
   readonly rejected: number;
   readonly sampleErrors: readonly string[];
 } {
@@ -101,7 +108,7 @@ export function parseFriSnapshot(json: string): {
       ? doc.generatedAtMs
       : null;
 
-  const rows: Array<{ mobile: string } & FeedEntry> = [];
+  const rows: FeedRow[] = [];
   const sampleErrors: string[] = [];
   let rejected = 0;
   for (const row of doc.entries) {

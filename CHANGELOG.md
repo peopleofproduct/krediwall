@@ -23,6 +23,10 @@ versions may break APIs until a 1.0 is cut.
   `@krediwall/telemetry-rules` builds rules from a strictly validated
   JSON file so thresholds can change without a deploy.
 - Publish readiness: per-package README and LICENSE copies.
+- **Feed coverage beyond phone VPAs** — snapshot rows may carry `vpa`
+  identifiers (namespaced digests, matched via `feed.lookupVpa`) and
+  `feedReputationRule` accepts a `resolveMobile` seam so an integrator's
+  merchant registry can map handles to mobiles.
 
 ## 0.1.0 — first tagged state
 

@@ -13,10 +13,12 @@
 //   KREDIWALL_FRI_SNAPSHOT  FRI snapshot JSON (docs/feed-snapshot-format.md)
 //   KREDIWALL_FRI_HMAC_KEY  key for feed digests; required with the snapshot
 //   KREDIWALL_FRI_MAX_AGE_MS  flag the load stale past this age (default 6h)
+//   KREDIWALL_VPA_REGISTRY  optional JSON map {"merchant@paytm":"9876543210"}
+//                           resolving non-phone payee VPAs to mobiles
 //   KREDIWALL_STATE_FILE    engine-state file for restart warm-up
 //   KREDIWALL_STATE_SAVE_MS   save cadence when a state file is set (default 60s)
 import { createRequire } from 'node:module';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
 const { KrediwallAdapter, createHttpAdapter } = require('@krediwall/enterprise-proxy');
@@ -49,7 +51,17 @@ if (snapshotPath !== undefined) {
   const result = loadFriSnapshotFile(feed, snapshotPath, {
     maxAgeMs: Number(env('KREDIWALL_FRI_MAX_AGE_MS') ?? 6 * 3_600_000),
   });
-  rules.push(feedReputationRule([feed]));
+  // Optional merchant-registry resolver: maps non-phone payee VPAs to
+  // their onboarding mobile. In production this is your merchant DB, not
+  // a file — the seam is identical.
+  let resolveMobile;
+  const registryPath = env('KREDIWALL_VPA_REGISTRY');
+  if (registryPath !== undefined) {
+    const registry = JSON.parse(readFileSync(registryPath, 'utf8'));
+    resolveMobile = (vpa) => registry[vpa] ?? null;
+    console.log(`registry: ${Object.keys(registry).length} VPA→mobile entries`);
+  }
+  rules.push(feedReputationRule([feed], 0.7, { resolveMobile }));
   console.log(
     `feed: ${result.loaded} numbers loaded, ${result.rejected} rejected` +
       (result.stale ? ' — STALE snapshot, check the upstream pipeline' : ''),
