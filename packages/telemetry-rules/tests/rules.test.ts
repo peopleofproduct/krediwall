@@ -399,3 +399,31 @@ describe('adversarial streams', () => {
     }
   });
 });
+
+describe('observability stats', () => {
+  it('counts LRU evictions', () => {
+    const map = new LruMap<string, number>(2);
+    map.set('a', 1);
+    map.set('b', 2);
+    map.set('c', 3); // evicts 'a'
+    map.set('d', 4); // evicts 'b'
+    expect(map.evictedCount).toBe(2);
+    expect(map.size).toBe(2);
+  });
+
+  it('exposes tracked/evicted lines through rule stats()', () => {
+    const rule = velocitySpike({
+      maxDistinctMerchants: 10,
+      windowMs: 60_000,
+      maxTrackedLines: 2,
+    });
+    rule.evaluate(txn({ creditLineId: 'l1' }), { nowMs: T0 });
+    rule.evaluate(txn({ creditLineId: 'l2' }), { nowMs: T0 });
+    rule.evaluate(txn({ creditLineId: 'l3' }), { nowMs: T0 }); // evicts l1
+    expect(rule.stats?.()).toEqual({
+      trackedLines: 2,
+      maxTrackedLines: 2,
+      evictedLines: 1,
+    });
+  });
+});

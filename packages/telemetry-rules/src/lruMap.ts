@@ -20,11 +20,21 @@ export class LruMap<K, V> {
   private readonly map = new Map<K, Node<K, V>>();
   private head: Node<K, V> | null = null; // most recently used
   private tail: Node<K, V> | null = null; // least recently used
+  private evicted = 0;
 
   constructor(readonly maxEntries: number) {}
 
   get size(): number {
     return this.map.size;
+  }
+
+  /**
+   * Entries dropped because the cap was reached. Evicted entities restart
+   * their history if they reappear — a rising count means the tracked-set
+   * cap is too small for the active population.
+   */
+  get evictedCount(): number {
+    return this.evicted;
   }
 
   get(key: K): V | undefined {
@@ -50,6 +60,7 @@ export class LruMap<K, V> {
       const lru = this.tail;
       this.unlink(lru);
       this.map.delete(lru.key);
+      this.evicted += 1;
     }
   }
 

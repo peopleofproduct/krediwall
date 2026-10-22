@@ -8,14 +8,32 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
       - run: npm run build
       - run: npm test
       - name: Smoke-test the demo (keeps README output honest)
         run: node examples/demo.mjs
+
+  bench:
+    runs-on: ubuntu-latest
+    # Advisory only: shared CI hardware makes tail-latency numbers noisy.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Latency smoke
+        run: node benchmarks/run.mjs --txns=200000 --lines=20000 --warmup=50000

@@ -96,6 +96,13 @@ export function muleDrain(options: MuleDrainOptions): Rule {
     reset() {
       lines.clear();
     },
+    stats() {
+      return {
+        trackedLines: lines.size,
+        maxTrackedLines: lines.maxEntries,
+        evictedLines: lines.evictedCount,
+      };
+    },
     exportState(): MuleDrainState {
       const out: Array<[string, Array<[number, number]>]> = [];
       for (const [key, ring] of lines.entriesLeastRecentFirst()) {

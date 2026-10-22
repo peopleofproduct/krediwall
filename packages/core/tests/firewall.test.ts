@@ -191,3 +191,63 @@ describe('FirewallEngine hardening', () => {
     ).toThrow('unsupported snapshot version');
   });
 });
+
+describe('FirewallEngine metrics', () => {
+  it('counts evaluations, verdicts, rule hits and rule errors', () => {
+    const flaky: Rule = {
+      name: 'flaky',
+      evaluate: (t) => {
+        if (t.txnId === 'boom') throw new Error('boom');
+        return t.txnId === 'hit'
+          ? { rule: 'flaky', verdict: Verdict.Review, reason: 'flagged' }
+          : null;
+      },
+    };
+    const engine = new FirewallEngine([flaky]);
+    engine.evaluate(txn({ txnId: 'ok' }));
+    engine.evaluate(txn({ txnId: 'hit' }));
+    engine.evaluate(txn({ txnId: 'boom' }));
+
+    const m = engine.metrics;
+    expect(m.evaluated).toBe(3);
+    // 'boom' threw and was isolated — the txn still counts as ALLOW
+    expect(m.verdicts).toEqual({ allow: 2, review: 1, block: 0 });
+    expect(m.ruleHits).toEqual({ flaky: 1 });
+    expect(m.ruleErrors).toEqual({ flaky: 1 });
+  });
+
+  it('flags degraded on malformed input and throwing rules, not on clean evals', () => {
+    const broken: Rule = {
+      name: 'broken',
+      evaluate: () => {
+        throw new Error('x');
+      },
+    };
+    const engine = new FirewallEngine([broken]);
+    expect(engine.evaluate(txn({})).degraded).toBe(true);
+
+    const clean = new FirewallEngine([]);
+    expect(clean.evaluate(txn({})).degraded).toBe(false);
+    expect(clean.evaluate(txn({ amountPaise: Number.NaN })).degraded).toBe(true);
+  });
+
+  it('aggregates per-rule stats keyed by rule name', () => {
+    const sensor: Rule = {
+      name: 'sensor',
+      evaluate: () => null,
+      stats: () => ({ trackedLines: 7, evictedLines: 2 }),
+    };
+    const engine = new FirewallEngine([sensor, { name: 'quiet', evaluate: () => null }]);
+    expect(engine.ruleStats()).toEqual({ sensor: { trackedLines: 7, evictedLines: 2 } });
+  });
+
+  it('resets counters on reset()', () => {
+    const engine = new FirewallEngine([verdictRule('hit.always', Verdict.Block, true)]);
+    engine.evaluate(txn({}));
+    engine.reset();
+    const m = engine.metrics;
+    expect(m.evaluated).toBe(0);
+    expect(m.verdicts).toEqual({ allow: 0, review: 0, block: 0 });
+    expect(m.ruleHits).toEqual({ 'hit.always': 0 });
+  });
+});

@@ -6,3 +6,5 @@ export type { VelocitySpikeOptions } from './velocitySpike';
 export { muleDrain } from './muleDrain';
 export type { MuleDrainOptions } from './muleDrain';
 export { creditOnUpiRules } from './presets';
+export { loadRulesConfigFile, rulesFromConfig } from './configFile';
+export type { TelemetryConfigFile } from './configFile';
