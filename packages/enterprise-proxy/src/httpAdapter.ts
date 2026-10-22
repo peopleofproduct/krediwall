@@ -1,7 +1,7 @@
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { createServer } from 'node:http';
-import type { Transaction } from '@vayu/core';
-import type { VayuAdapter } from './vayuAdapter';
+import type { Transaction } from '@krediwall/core';
+import type { KrediwallAdapter } from './krediwallAdapter';
 
 const MAX_BODY_BYTES = 16 * 1024;
 
@@ -62,7 +62,7 @@ const isTransaction = (v: unknown): v is Transaction => {
  *   POST /v1/evaluate  Transaction JSON → Evaluation JSON (200) or error (4xx)
  *   GET  /healthz      → {"status":"ok"}
  */
-export function createHttpAdapter(adapter: VayuAdapter): Server {
+export function createHttpAdapter(adapter: KrediwallAdapter): Server {
   return createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/healthz') {
       send(res, 200, { status: 'ok' });

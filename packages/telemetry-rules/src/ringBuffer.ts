@@ -5,6 +5,9 @@
  *
  * `aux` carries whatever numeric the rule needs — a VPA hash, an amount, a
  * geo bucket id.
+ *
+ * Entries are assumed to be pushed in non-decreasing timestamp order; the
+ * window walks stop at the first stale entry.
  */
 export class RingBuffer {
   private readonly stamps: Float64Array;
@@ -29,10 +32,28 @@ export class RingBuffer {
   }
 
   /**
-   * Invoke `cb` for every entry at most `windowMs` old, newest to oldest,
-   * with zero allocation. Because pushes are chronological in practice the
-   * walk stops at the first out-of-window entry. Returning `false` from the
-   * callback breaks early.
+   * Number of entries at most `windowMs` old. Closure-free; pair with
+   * `auxAt` to iterate without allocating.
+   */
+  countWithin(windowMs: number, nowMs: number): number {
+    let n = 0;
+    while (n < this.size) {
+      const idx = (this.head - 1 - n + this.capacity) % this.capacity;
+      if (nowMs - this.stamps[idx]! > windowMs) break;
+      n += 1;
+    }
+    return n;
+  }
+
+  /** `aux` value of the i-th newest entry (0 = newest); keep `i < length`. */
+  auxAt(i: number): number {
+    return this.aux[(this.head - 1 - i + this.capacity) % this.capacity]!;
+  }
+
+  /**
+   * Invoke `cb` for every entry at most `windowMs` old, newest to oldest.
+   * Returning `false` from the callback breaks early. Convenient but the
+   * callback is a closure; hot paths should prefer `countWithin`/`auxAt`.
    */
   forEachWithin(
     windowMs: number,

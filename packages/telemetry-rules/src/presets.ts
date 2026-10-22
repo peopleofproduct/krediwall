@@ -1,14 +1,17 @@
-import type { Rule } from '@vayu/core';
+import type { Rule } from '@krediwall/core';
 import { muleDrain } from './muleDrain';
 import { velocitySpike } from './velocitySpike';
 
 /**
- * The standard Credit-on-UPI rule set with defaults tuned to the fraud
- * patterns in scope:
- * - >4 distinct payee VPAs or >2 geo cells inside 60s → velocity spike
- * - ≥2 repeat ₹45k–₹50k tickets burning ≥90% of limit inside 60s at
- *   unverified terminals → mule drain (BLOCK on fresh lines, REVIEW on
- *   lines older than 24h)
+ * A starter Credit-on-UPI rule set. The defaults are **illustrative**: they
+ * encode the fraud patterns in scope, not thresholds validated on production
+ * traffic. Calibrate them against your own ticket distribution before use.
+ *
+ * - more than 4 distinct payee VPAs or more than 2 geo cells inside 60s
+ *   → velocity spike
+ * - at least 2 repeat ₹45k–₹50k tickets burning ≥90% of limit inside 60s at
+ *   unverified terminals → mule drain (BLOCK on lines approved within 24h,
+ *   REVIEW on older lines)
  */
 export function creditOnUpiRules(): Rule[] {
   return [

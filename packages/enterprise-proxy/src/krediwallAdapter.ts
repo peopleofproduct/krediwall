@@ -1,5 +1,5 @@
-import type { Evaluation, Rule, Transaction } from '@vayu/core';
-import { FirewallEngine } from '@vayu/core';
+import type { Evaluation, Rule, Transaction } from '@krediwall/core';
+import { FirewallEngine } from '@krediwall/core';
 
 /** Throughput accounting for the commercial billing hook. */
 export interface MeterWindow {
@@ -50,7 +50,7 @@ const UNCHECKED: GraphVerdict = { muleRingScore: 0, checked: false };
  * verdict out. Commercial hooks are explicit seams the open-core build
  * leaves stubbed.
  */
-export class VayuAdapter {
+export class KrediwallAdapter {
   private readonly engine: FirewallEngine;
   private readonly meter = new BillingMeter();
 

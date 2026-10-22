@@ -17,3 +17,5 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - name: Smoke-test the demo (keeps README output honest)
+        run: node examples/demo.mjs

@@ -1,64 +1,117 @@
-import type { Rule, RuleHit, RuleContext, Transaction } from '@vayu/core';
-import { Verdict } from '@vayu/core';
-import { createHash } from 'node:crypto';
+import type { Rule, RuleHit, RuleContext, Transaction } from '@krediwall/core';
+import { Verdict } from '@krediwall/core';
+import { createHmac } from 'node:crypto';
 
-/** Reputation signal for a single VPA from a national fraud feed. */
+/** Reputation signal for a single mobile number from a national fraud feed. */
 export interface FeedEntry {
-  /** True when the VPA appears on the feed's blocklist. */
+  /** True when the number is on a hard list (e.g. revoked / suspect registry). */
   readonly listed: boolean;
-  /** Feed-provided risk score in [0, 1], when available. */
+  /** Risk score in [0, 1]. */
   readonly riskScore: number;
 }
 
 /**
- * A national fraud-intelligence feed adapter. Implementations hold a local
- * snapshot of listed VPAs (as salted hashes — raw VPAs are never stored)
- * refreshed out-of-band from the upstream source.
+ * DoT's Financial Fraud Risk Indicator (FRI) classifies a *mobile number* as
+ * Medium, High or Very High risk of financial fraud. These are DoT's levels;
+ * the numeric scores below are Krediwall's own policy mapping, not a DoT value.
+ */
+export type FriLevel = 'medium' | 'high' | 'very_high';
+
+const FRI_SCORES: Readonly<Record<FriLevel, number>> = {
+  medium: 0.5,
+  high: 0.75,
+  very_high: 1,
+};
+
+export const friEntry = (level: FriLevel): FeedEntry => ({
+  listed: false,
+  riskScore: FRI_SCORES[level],
+});
+
+const MOBILE = /^(?:\+?91|0)?([6-9]\d{9})$/;
+
+/** Normalise an Indian mobile number to its 10-digit form, or null. */
+export function normalizeMobile(input: string): string | null {
+  const m = MOBILE.exec(input.replace(/[\s\-()]/g, ''));
+  return m?.[1] ?? null;
+}
+
+/**
+ * Extract a mobile number from a VPA whose handle *is* a phone number
+ * (`9876543210@ybl`, `+919876543210@paytm`). Returns null for any other VPA —
+ * merchant and name-based handles cannot be resolved to a mobile number here,
+ * so feed checks do not apply to them.
+ */
+export function mobileFromVpa(vpa: string): string | null {
+  const at = vpa.indexOf('@');
+  return at <= 0 ? null : normalizeMobile(vpa.slice(0, at));
+}
+
+/**
+ * A national fraud-intelligence feed. Implementations hold a local snapshot
+ * keyed by mobile number. Obtaining the snapshot is the integrator's job:
+ * FRI is delivered to onboarded stakeholders through DoT's Digital
+ * Intelligence Platform, and there is no public API this library calls.
  */
 export interface FraudFeed {
   readonly source: string;
-  lookup(vpa: string): FeedEntry | null;
+  lookup(mobile: string): FeedEntry | null;
 }
 
-const digest = (salt: string, vpa: string): string =>
-  createHash('sha256').update(`${salt}${vpa}`).digest('hex');
+/**
+ * Keyed-HMAC digest so raw numbers are not stored. This is obfuscation at
+ * rest, not strong privacy: the 10-digit mobile space is small enough to
+ * enumerate if `key` leaks, so keep it in a secret store.
+ */
+const digest = (key: string, mobile: string): string =>
+  createHmac('sha256', key).update(mobile).digest('hex');
 
-/** Shared in-memory snapshot lookup keyed by hashed VPA. */
+/** In-memory snapshot lookup keyed by HMAC of the normalised mobile number. */
 export class InMemoryFeed implements FraudFeed {
   private readonly entries = new Map<string, FeedEntry>();
 
   constructor(
     readonly source: string,
-    private readonly salt: string,
+    private readonly key: string,
   ) {}
 
-  /** Bulk-load a feed snapshot; replaces the previous one. */
-  ingest(snapshot: ReadonlyArray<{ vpa: string } & FeedEntry>): void {
+  /** Replace the snapshot. Rows whose number cannot be normalised are rejected. */
+  ingest(snapshot: ReadonlyArray<{ readonly mobile: string } & FeedEntry>): {
+    loaded: number;
+    rejected: number;
+  } {
     this.entries.clear();
-    for (const e of snapshot) {
-      this.entries.set(digest(this.salt, e.vpa), {
-        listed: e.listed,
-        riskScore: e.riskScore,
+    let loaded = 0;
+    let rejected = 0;
+    for (const row of snapshot) {
+      const mobile = normalizeMobile(row.mobile);
+      if (mobile === null) {
+        rejected += 1;
+        continue;
+      }
+      this.entries.set(digest(this.key, mobile), {
+        listed: row.listed,
+        riskScore: row.riskScore,
       });
+      loaded += 1;
     }
+    return { loaded, rejected };
   }
 
-  lookup(vpa: string): FeedEntry | null {
-    return this.entries.get(digest(this.salt, vpa)) ?? null;
+  lookup(mobile: string): FeedEntry | null {
+    const normalised = normalizeMobile(mobile);
+    if (normalised === null) return null;
+    return this.entries.get(digest(this.key, normalised)) ?? null;
   }
 }
 
-/** DoT Chakshu portal feed — citizen-reported suspected-fraud VPA lists. */
-export const chakshuFeed = (salt: string): FraudFeed =>
-  new InMemoryFeed('chakshu', salt);
-
-/** NPCI/RBI Fraud Reporting Interface feed — confirmed mule VPAs. */
-export const friFeed = (salt: string): FraudFeed =>
-  new InMemoryFeed('fri', salt);
+/** FRI snapshot feed (Chakshu and NCRP reports are inputs to FRI upstream). */
+export const friFeed = (key: string): InMemoryFeed => new InMemoryFeed('fri', key);
 
 /**
- * Wraps feeds as a firewall rule: BLOCK on a listed VPA, REVIEW on a high
- * risk score. Kept here so feed wiring lives next to feed plumbing.
+ * Wraps feeds as a firewall rule: BLOCK on a listed number, REVIEW on a risk
+ * score at or above `reviewThreshold`. Applies only when the payee VPA is
+ * phone-number based; other payees pass through unchecked.
  */
 export function feedReputationRule(
   feeds: readonly FraudFeed[],
@@ -68,15 +121,18 @@ export function feedReputationRule(
   return {
     name,
     evaluate(txn: Transaction, _ctx: RuleContext): RuleHit | null {
+      const mobile = mobileFromVpa(txn.payeeVpa);
+      if (mobile === null) return null;
+
       let maxScore = 0;
       for (const feed of feeds) {
-        const entry = feed.lookup(txn.payeeVpa);
+        const entry = feed.lookup(mobile);
         if (entry === null) continue;
         if (entry.listed) {
           return {
             rule: name,
             verdict: Verdict.Block,
-            reason: `payee VPA listed on ${feed.source} feed`,
+            reason: `payee mobile number listed on ${feed.source} feed`,
           };
         }
         if (entry.riskScore > maxScore) maxScore = entry.riskScore;
@@ -85,7 +141,7 @@ export function feedReputationRule(
         return {
           rule: name,
           verdict: Verdict.Review,
-          reason: `payee VPA feed risk score ${maxScore.toFixed(2)}`,
+          reason: `payee mobile number feed risk score ${maxScore.toFixed(2)}`,
         };
       }
       return null;

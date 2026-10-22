@@ -1,7 +1,11 @@
 /**
- * FNV-1a 32-bit hash of a VPA string, returned as a number.
- * Raw VPA strings are never retained in rule state — only this
- * non-reversible bucket id — which keeps telemetry free of user PII.
+ * FNV-1a 32-bit hash of a string, returned as a number.
+ *
+ * Rule state keeps this bucket id instead of the raw VPA string, so raw
+ * identifiers are not retained in memory. It is a fast bucketing hash, NOT a
+ * cryptographic one: VPAs are low-entropy and can be recovered by dictionary
+ * search, and 32 bits can collide. Treat it as data minimisation, not as a
+ * privacy guarantee.
  */
 export function hashVpa(vpa: string): number {
   let h = 0x811c9dc5;

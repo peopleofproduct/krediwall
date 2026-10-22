@@ -1,4 +1,4 @@
-# Commercial Strategy: Open-Core Firewall for Credit-on-UPI
+# Commercial Strategy: Open-Core Firewall for Credit-Funded UPI
 
 > How the free engine spreads through the ecosystem while the paid tier sells
 > compliance depth and network intelligence.
@@ -7,84 +7,105 @@
 
 ```
 ┌──────────────────────────────────────────┐    ┌──────────────────────────────────────────┐
-│   OPEN CORE: @vayu/telemetry-rules       │    │   PAID TIER: ENTERPRISE GATEWAY          │
-│        (Apache-2.0, free adoption)       │    │      (utility SaaS + on-prem license)    │
+│   OPEN CORE (Apache-2.0, in this repo)   │    │   COMMERCIAL MODULES (not in this repo)  │
 ├──────────────────────────────────────────┤    ├──────────────────────────────────────────┤
-│  • In-memory velocity & heuristics       │    │  • Multi-hop mule-ring graph checks      │
-│  • FirewallEngine + verdict types        │    │  • CERT-In / FMR automated reporters     │
-│  • Chakshu / FRI feed adapters           │    │  • Managed on-prem cluster updates       │
-│  • Community rule patches                │    │  • EWS/RFA integration depth + audits    │
+│  • FirewallEngine + verdict types        │    │  • Multi-hop mule-ring graph scoring     │
+│  • Velocity-spike and mule-drain rules   │    │  • Automated CERT-In / FMR reporters     │
+│  • FRI feed adapter (mobile-keyed)       │    │  • Managed feed ingestion for            │
+│  • KrediwallAdapter + HTTP gateway       │    │    DIP-onboarded customers               │
+│  • Compliance deadline helpers (stubs)   │    │  • Managed on-prem updates, audit pack   │
+│  • Community rule patches                │    │  • Support, SLAs, certifications         │
 └──────────────────────────────────────────┘    └──────────────────────────────────────────┘
 ```
 
-The open core is deliberately complete enough to be *useful* — a fintech can
-drop `VayuAdapter` into a switch pipeline today. What it cannot give you is
-the intelligence layer above single-transaction heuristics: graph-network
-scoring of recipient rings, jurisdiction-grade audit trails, and managed
-compliance reporting.
+The open core is deliberately complete enough to be *useful*: a fintech can
+drop `KrediwallAdapter` into a service today. What it cannot give you is the
+intelligence layer above single-transaction heuristics — graph scoring of
+recipient rings, jurisdiction-grade audit trails, managed compliance
+reporting, and a vendor accountable for them.
 
-## 2. Pricing matrix
+## 2. Pricing matrix (working hypothesis)
 
 | Tier | Target client | Mechanics |
 |---|---|---|
-| **Open-Core Engine** | Early-stage fintech apps & indie developers | **₹0 (Apache-2.0).** Local eval loop, in-memory velocity formulas, standard schema profiles. |
-| **TSP Managed Transit** | High-volume digital NBFCs & neo-lenders | **Utility transaction fee.** ₹0.05–₹0.15 per routed evaluation, capped dynamically on monthly volume commits. |
-| **On-Prem Vault** | Scheduled commercial banks (SBI, HDFC, ICICI) | **Flat enterprise license.** ₹12L–₹45L per year per air-gapped node cluster, incl. managed software updates and audit guarantees. |
+| **Open-Core Engine** | Early-stage fintech apps and indie developers | **₹0 (Apache-2.0).** In-process eval loop, starter rules, open adapters. |
+| **Managed Transit (hosted)** | High-volume digital NBFCs, neo-lenders and the PSP/TPAP apps that front them | **Utility transaction fee.** ₹0.05–₹0.15 per routed evaluation, capped dynamically on monthly volume commits. |
+| **On-Prem Vault** | Scheduled commercial banks and large lenders | **Flat enterprise licence.** ₹12L–₹45L per year per air-gapped node cluster, incl. managed updates and audit guarantees. |
 
-The utility tier is priced below a bank's marginal cost of a single mule
-drain: at ₹0.05–0.15/evaluation, ₹1 crore of monthly utility covers ~7–20
-crore evaluations — while one undetected fresh-line drain burns an entire
-₹60,000–₹1,00,000 limit in seconds.
+Larger lenders usually already run an enterprise fraud suite, so the on-prem
+tier is positioned as a **complementary pre-authorisation sidecar** carrying
+credit-line context, not as a replacement for that suite.
 
-## 3. SRO alignment: the Sahamati play
+*Value check.* At ₹0.10 per evaluation, preventing one full ₹60,000 limit drain
+covers about 6 lakh evaluations; at ₹0.15, about 4 lakh.
 
-In **June 2026** the RBI recognised the **Sahamati Foundation as the
-Self-Regulatory Organisation (SRO)** for India's Account Aggregator
-ecosystem — the first cross-sectoral SRO spanning multiple financial
-regulators (RBI, SEBI, IRDAI, PFRDA), chaired by former RBI deputy governor
-R. Gandhi. [1] The AA network it governs already includes **1,120+ regulated
-entities, 176 FIPs, 1,020 FIUs and 17 AAs**, moving ~290 million consented
-data shares a month. [2]
+*Terminology.* "PSP" is a UPI Payment Service Provider (the sponsor bank) and
+"TPAP" a Third-Party Application Provider (a UPI app). We avoid "TSP": in the
+DoT sources cited here it means Telecom Service Provider.
 
-Strategic implications for Vayu:
+## 3. Licensing and what actually protects the business
 
-- **Standards shaping.** SROs write the operational/technical baseline for
-  the ecosystem. Submitting Vayu's open telemetry-rule schema for SRO
-  evaluation positions it as a candidate baseline protocol for high-velocity
-  credit protection — the way ReBIT and AA-grade schemas became
-  industry defaults.
-- **Institutional trust shortcut.** Aligning the engine's data-privacy
-  posture (hashed VPAs, in-memory-only evaluation, no raw telemetry egress)
-  with SRO guidelines substitutes for per-bank security audits — critical
-  for reaching the smaller banks that "lack understanding of the product". [3]
-- **Fraud-check adjacency.** The AA framework already performs consent-based
-  data sharing for underwriting, collections and *fraud checks* [4] — Vayu's
-  feed-reputation and EWS-signal layer is a natural complement inside the
-  same data-consent envelope.
+The code is **Apache-2.0**. That licence maximises adoption — banks' legal
+teams accept it and anyone can embed it — but it does not by itself protect
+revenue:
 
-## 4. Regulatory hooks → paid features
+- Anyone may host or resell the open core, and may keep their modifications
+  private. A hosted tier built only from open code has no licence moat.
+- Apache-2.0 §6 grants **no trademark rights**. Any protection for the
+  project and maintainer names depends on registration and enforcement (see
+  [TRADEMARKS.md](../TRADEMARKS.md)).
+- Contributions arrive under the same licence, so relicensing later needs each
+  contributor's consent. Until a CLA is in place the project does not accept
+  outside code ([CONTRIBUTING.md](../CONTRIBUTING.md)).
 
-| Mandate | Window | Vayu surface |
+So the defensible parts are **not** the open code:
+
+1. **Data and network effects** — a mule-ring graph that improves with every
+   participating lender.
+2. **Compliance deliverables** — audited, supported FMR/CERT-In reporting.
+3. **Trust and accountability** — certifications, SLAs and a named vendor.
+4. **Brand** — the registered marks.
+5. **Private commercial modules** — their implementations stay out of this
+   repository; only stubs and interfaces are public.
+
+## 4. Where standards bodies fit
+
+In June 2026 the RBI recognised the **Sahamati Foundation as the
+Self-Regulatory Organisation (SRO) for the Account Aggregator (AA)
+ecosystem**, chaired by former RBI deputy governor R. Gandhi, covering 1,120+
+regulated entities and ~290 million data shares a month. [1][2]
+
+Its relevance to Krediwall is **indirect**. The SRO governs AA data sharing —
+which lenders use for underwriting and fraud checks [3] — not UPI payment
+fraud or credit-line standards. It is a possible adjacency if Krediwall rules
+ever consume AA data, not a current route to standard-setting or a
+substitute for bank security reviews. The bodies that matter more for
+credit-funded UPI fraud are NPCI, RBI's payment-systems department and
+DoT/I4C (through the Digital Intelligence Platform).
+
+## 5. Regulatory hooks → product surface
+
+| Mandate | Window | Krediwall surface |
 |---|---|---|
 | RBI Fraud Master Directions: EWS integrated with CBS/ops systems | Continuous, synchronous | `Rule` hits → EWS trigger stream (open) |
-| FMR portal: fraud reporting to RBI | 14 days from classification | FMR draft generator (paid) |
-| CERT-In s.70B(6) cyber-incident reporting | **6 hours** from notice | `certInReportDeadlineMs` → automated incident reporter (paid) |
-| Limited-liability circular: 24×7 customer reporting | Continuous | Verdict telemetry API for SOC dashboards (paid) |
-| DoT FRI integration advisory | Real-time API | `feedReputationRule` (open), managed feed sync (paid) |
+| FMR portal: fraud reporting to RBI | 14 days from classification | FMR draft generator (commercial) |
+| CERT-In s.70B(6) cyber-incident reporting | **6 hours** from notice | `certInReportDeadlineMs` helper (open) → automated reporter (commercial) |
+| Limited-liability circular: 24×7 customer reporting | Continuous | Verdict telemetry API for SOC dashboards (commercial) |
+| DoT FRI integration advisory | Real-time via DIP | `feedReputationRule` (open); managed ingestion for DIP-onboarded customers (commercial) |
 
-The open-core `ComplianceHooks` stub in `packages/enterprise-proxy` encodes
-these deadlines so the paid reporters slot in without API changes.
+The open `ComplianceHooks` stub in `packages/enterprise-proxy` encodes the
+deadlines so commercial reporters can slot in without API changes.
 
-## 5. Why this model fits this market
+## 6. Why this model fits this market
 
-- UPI infrastructure is bought, not sold — banks and TSPs integrate what the
-  ecosystem already trusts. Open-core maximizes the surface area that
-  becomes "the default".
-- Utility pricing matches payment-switch economics (paise-per-txn mental
-  model every NBFC CFO already uses).
-- The on-prem tier exists because banks with air-gapped switch
-  infrastructure cannot adopt SaaS — but they pay the most for
-  audit-guaranteed determinism.
+- UPI infrastructure is adopted, not impulse-bought: banks and PSPs integrate
+  what the ecosystem already trusts. Open-core maximises how many teams can
+  try it before procurement is involved.
+- Utility pricing matches payment-switch economics (paise-per-transaction is a
+  familiar unit for lender finance teams).
+- The on-prem tier exists because lenders with air-gapped infrastructure
+  cannot adopt hosted services; what they pay for is determinism, audit and
+  accountability.
 
 ---
 
@@ -92,5 +113,4 @@ these deadlines so the paid reporters slot in without API changes.
 
 1. Sahamati, *RBI Recognition of Sahamati as SRO — new phase for India's AA ecosystem*, 5 Jun 2026 — https://sahamati.org.in/media-article/rbi-sro-recognition-account-aggregator-ecosystem/
 2. Business Standard, *RBI recognises Sahamati Foundation as SRO for account aggregator ecosystem*, Jun 2026 — https://www.business-standard.com/finance/news/rbi-recognises-sahamati-foundation-as-sro-for-account-aggregator-ecosystem-126060501286_1.html
-3. Business Standard, *Unclear guidelines hold back growth of credit line on UPI since launch*, Oct 2025 — https://www.business-standard.com/finance/news/unclear-guidelines-hold-back-growth-of-credit-line-on-upi-since-launch-125100500501_1.html
-4. The Economic Times, *RBI approves Sahamati as SRO for AA ecosystem*, Jun 2026 — https://economictimes.indiatimes.com/tech/technology/rbi-approves-sahamati-as-sro-for-account-aggregator-ecosystem/articleshow/131535777.cms
+3. The Economic Times, *RBI approves Sahamati as SRO for AA ecosystem*, Jun 2026 — https://economictimes.indiatimes.com/tech/technology/rbi-approves-sahamati-as-sro-for-account-aggregator-ecosystem/articleshow/131535777.cms

@@ -10,9 +10,10 @@ const severity = (v: Verdict): number =>
  * Synchronous in-memory evaluation loop.
  *
  * Rules run in registration order. The loop short-circuits on the first
- * BLOCK, since no subsequent rule can produce a worse verdict. The only
- * allocation on the hot path is the hit list, created lazily on the first
- * positive firing — clean evaluations allocate nothing.
+ * BLOCK, since no subsequent rule can produce a worse verdict. The hot path
+ * is allocation-light, not allocation-free: each call creates one small
+ * context object and one result object, and the hit list is created lazily
+ * on the first positive firing. Measure real latency with `npm run bench`.
  */
 export class FirewallEngine {
   private readonly rules: readonly Rule[];

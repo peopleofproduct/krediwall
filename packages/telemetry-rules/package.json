@@ -1,7 +1,7 @@
 {
-  "name": "@vayu/telemetry-rules",
+  "name": "@krediwall/telemetry-rules",
   "version": "0.1.0",
-  "description": "In-memory velocity and heuristic rule blocks for the Vayu fraud firewall. Zero runtime dependencies.",
+  "description": "In-memory velocity and heuristic rule blocks for the Krediwall fraud firewall. Zero runtime dependencies.",
   "license": "Apache-2.0",
   "author": "Kapil",
   "main": "dist/index.js",
@@ -9,10 +9,13 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -b"
   },
   "dependencies": {
-    "@vayu/core": "0.1.0"
+    "@krediwall/core": "0.1.0"
   }
 }

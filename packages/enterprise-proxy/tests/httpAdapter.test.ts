@@ -1,10 +1,10 @@
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { Transaction } from '@vayu/core';
-import { Verdict } from '@vayu/core';
-import { velocitySpike } from '@vayu/telemetry-rules';
+import type { Transaction } from '@krediwall/core';
+import { Verdict } from '@krediwall/core';
+import { velocitySpike } from '@krediwall/telemetry-rules';
 import { createHttpAdapter } from '../src/httpAdapter';
-import { VayuAdapter } from '../src/vayuAdapter';
+import { KrediwallAdapter } from '../src/krediwallAdapter';
 
 const TXN: Transaction = {
   txnId: 'txn-1',
@@ -23,7 +23,7 @@ describe('httpAdapter', () => {
 
   beforeAll(async () => {
     server = createHttpAdapter(
-      new VayuAdapter([velocitySpike({ maxDistinctMerchants: 1, windowMs: 60_000 })]),
+      new KrediwallAdapter([velocitySpike({ maxDistinctMerchants: 1, windowMs: 60_000 })]),
     );
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const { port } = server.address() as AddressInfo;

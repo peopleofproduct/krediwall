@@ -69,9 +69,11 @@ describe('FirewallEngine', () => {
     expect(count).toBe(0);
   });
 
-  it('evaluates a high-velocity stream within the 5ms verdict budget', () => {
+  it('smoke test: mean evaluation latency stays far inside the 5ms budget', () => {
     // A stateful rule doing realistic per-entity work (Map + arithmetic),
-    // standing in for the telemetry-rules heuristics.
+    // standing in for the telemetry-rules heuristics. This is a sequential
+    // smoke test of the mean only; tail latency (p99/p99.9), GC behaviour and
+    // the real rule set are measured by `npm run bench`.
     const seen = new Map<string, number>();
     const velocityish: Rule = {
       name: 'velocityish',

@@ -1,9 +1,9 @@
-import type { Transaction } from '@vayu/core';
-import { Verdict } from '@vayu/core';
-import { velocitySpike } from '@vayu/telemetry-rules';
+import type { Transaction } from '@krediwall/core';
+import { Verdict } from '@krediwall/core';
+import { velocitySpike } from '@krediwall/telemetry-rules';
 import { complianceHooks } from '../src/compliance';
 import type { IncidentRecord } from '../src/compliance';
-import { VayuAdapter } from '../src/vayuAdapter';
+import { KrediwallAdapter } from '../src/krediwallAdapter';
 
 const txn = (overrides: Partial<Transaction>): Transaction => ({
   txnId: 'txn-1',
@@ -17,9 +17,9 @@ const txn = (overrides: Partial<Transaction>): Transaction => ({
   ...overrides,
 });
 
-describe('VayuAdapter', () => {
+describe('KrediwallAdapter', () => {
   it('proxies engine verdicts on the hot path', () => {
-    const adapter = new VayuAdapter([
+    const adapter = new KrediwallAdapter([
       velocitySpike({ maxDistinctMerchants: 1, windowMs: 60_000 }),
     ]);
     expect(adapter.handleTransaction(txn({ payeeVpa: 'a@paytm' })).verdict).toBe(
@@ -31,7 +31,7 @@ describe('VayuAdapter', () => {
   });
 
   it('stubs the graph-network hook as unchecked', async () => {
-    const adapter = new VayuAdapter([]);
+    const adapter = new KrediwallAdapter([]);
     await expect(adapter.evaluateGraphNetwork('x@ybl')).resolves.toEqual({
       muleRingScore: 0,
       checked: false,
@@ -39,7 +39,7 @@ describe('VayuAdapter', () => {
   });
 
   it('counts evaluations through the billing meter', () => {
-    const adapter = new VayuAdapter([]);
+    const adapter = new KrediwallAdapter([]);
     adapter.handleTransaction(txn({}));
     adapter.handleTransaction(txn({}));
     // Current window is still open; nothing has rolled into completedWindows yet.

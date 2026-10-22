@@ -19,7 +19,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@vayu/*": ["./packages/*/src"]
+      "@krediwall/*": ["./packages/*/src"]
     }
   }
 }

@@ -1,8 +1,8 @@
 {
-  "name": "panini-vayu",
+  "name": "krediwall",
   "version": "0.1.0",
   "private": true,
-  "description": "Vayu — high-velocity Credit-on-UPI fraud firewall. Zero-dependency, in-memory transaction evaluation engine targeting sub-5ms verdicts.",
+  "description": "Krediwall — high-velocity Credit-on-UPI fraud firewall. Zero-dependency, in-memory transaction evaluation engine targeting sub-5ms verdicts.",
   "license": "Apache-2.0",
   "author": "Kapil",
   "workspaces": [
@@ -12,7 +12,9 @@
     "build": "tsc -b",
     "clean": "tsc -b --clean",
     "test": "jest",
-    "typecheck": "tsc -b --pretty"
+    "typecheck": "tsc -b --pretty",
+    "demo": "tsc -b && node examples/demo.mjs",
+    "bench": "tsc -b && node --expose-gc benchmarks/run.mjs"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

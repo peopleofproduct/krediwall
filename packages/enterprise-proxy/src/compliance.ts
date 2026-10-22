@@ -1,4 +1,4 @@
-import type { Verdict } from '@vayu/core';
+import type { Verdict } from '@krediwall/core';
 
 /** A rule firing that may constitute a reportable fraud / cyber incident. */
 export interface IncidentRecord {

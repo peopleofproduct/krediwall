@@ -1,6 +1,6 @@
-# Problem Statement: Fraud on Credit-on-UPI
+# Problem Statement: Fraud on Credit-Funded UPI
 
-> Why a credit line riding a 200-millisecond rail needs a new kind of firewall.
+> Why a lender's credit line on a real-time, irrevocable rail needs a firewall that understands credit.
 
 ## 0. First principles: the velocity–liquidity safety valve
 
@@ -9,96 +9,163 @@ Traditional banking fraud defence rests on an implicit safety valve — the
 one of two safe quadrants:
 
 ```
-Lending / credit cards  ──► [ high capital exposure ] ──► [ hours/days to underwrite ]
-Retail P2P/P2M UPI      ──► [ low capital risk (own $) ] ──► [ <200ms rails ]
+Lending / credit cards  ──► [ high capital exposure ]      ──► [ hours/days to underwrite ]
+Retail P2P/P2M UPI      ──► [ low capital risk (own money) ] ──► [ real-time, push-and-final ]
 
-Credit-on-UPI           ──► [ HIGH CAPITAL EXPOSURE ]   ┼──► [ <200 MILLISECOND RAILS ]
+Credit-funded UPI       ──► [ HIGH CAPITAL EXPOSURE ]       ┼──► [ REAL-TIME, PUSH-AND-FINAL ]
 ```
 
 - Credit products always carried high capital exposure, but granted liquidity
   over hours or days — leaving a wide window for batch underwriting, manual
   review and pre-release compliance blocks.
-- UPI always executed instantly, but could only move money the customer
+- UPI always executed in real time, but could only move money the customer
   already had — the blast radius was bounded by an account balance.
 
-Credit Line on UPI collapses both safety valves at once: a compromised credit
-account lets a fraudster draw down the **lender's pre-sanctioned balance sheet
-in real time**, inside the same ~200 ms window that made UPI the world's
-highest-volume rail. Anything that wants to stop it must decide **before
-settlement** — which is why the evaluation budget collapses to single-digit
-milliseconds.
+Credit Line on UPI (CLOU) and RuPay credit cards on UPI put the first
+quadrant's exposure on the second quadrant's rail: a compromised credit
+account lets a fraudster draw down the **lender's pre-sanctioned balance
+sheet** on a rail where a payment completes within seconds and cannot be
+recalled. Anything that wants to stop it must decide **before the payment is
+released**, inside a budget small enough not to hurt approval rates.
 
 ## 1. What changed
 
-In September 2023 the RBI opened UPI to **pre-sanctioned credit lines** as a funding account — previously UPI could only debit savings accounts, overdraft accounts, prepaid wallets and (from 2022) RuPay credit cards. [1] The product was launched at Global Fintech Fest 2023 alongside UPI Lite X and conversational payments. [2]
+In September 2023 the RBI opened UPI to **pre-sanctioned credit lines** as a
+funding account — previously UPI could debit savings accounts, overdraft
+accounts, prepaid wallets and RuPay credit cards. [1] The product was launched
+at Global Fintech Fest 2023 alongside UPI Lite X and conversational payments. [2]
 
-This changed the blast radius of a UPI fraud:
+Credit-funded UPI is already large through the card route: RuPay credit cards
+recorded **750 million UPI transactions worth ₹63,825.8 crore in April–October
+FY 2024–25** (finance-ministry data cited by Mint), and Bernstein estimates
+credit-card-linked UPI is nearly four in ten credit-card transactions but only
+about 8% of spend. [19] That is an average ticket of roughly ₹850 — small,
+frequent, everyday payments.
 
-| | Deposit-account UPI fraud | Credit-on-UPI fraud |
+This changes the blast radius of a UPI fraud:
+
+| | Deposit-account UPI fraud | Credit-funded UPI fraud |
 |---|---|---|
 | Whose money is taken | The victim's own balance | **The lender's loaned capital** |
-| Recovery path | Reversal, chargeback, complaint | The "borrower" is a mule — there is no one to collect from |
-| Effective exposure | Account balance | The full sanctioned limit |
-| Time-to-drain | Limited by balance & daily caps | A fresh ₹60,000–₹1,00,000 line can be emptied in under a minute |
+| Recovery path | Reversal, chargeback, complaint | The "borrower" may be a mule — there may be no one to collect from |
+| Effective exposure | Account balance | Up to the sanctioned limit |
+| Time-to-drain | Limited by balance and daily caps | Limited by the sanctioned limit and per-transaction caps; the scenarios we model drain a fresh line within a minute (illustrative) |
 
-UPI fraud overall is already at industrial scale: the Ministry of Finance reported **16.29 lakh UPI fraud incidents involving ₹1,226.37 crore in FY 2025–26** (partial year), up from 4.07 lakh / ₹242 crore in FY 2021–22 — a 5× rise in value terms in four years. [3] Fraud incidents grew 85% in FY24 alone even as volumes grew 57%. [4]
+UPI fraud overall is already at industrial scale: the Ministry of Finance
+reported **16.29 lakh UPI fraud incidents involving ₹1,226.37 crore in
+FY 2025–26** (partial year), up from 4.07 lakh / ₹242 crore in FY 2021–22 — about
+5× in value over four years. [3] Incidents grew 85% in FY24 alone while
+volumes grew 57%. [4]
 
 ## 2. The latency constraint
 
-A UPI authorization must settle inside the switch window — conventionally budgeted at **~200 ms** end-to-end across PSP, issuer and NPCI hops. Whatever fraud check sits in that window has a fraction of it:
+UPI is push-and-final: once the issuer debits and the beneficiary is credited,
+there is no recall. NPCI sets response-time ceilings for each hop — since
+16 June 2025, **15 seconds** for Pay requests and **10 seconds** for status
+checks and reversals — and asked members to ensure the tighter limits do not
+worsen technical-decline thresholds. [15] Those are ceilings, not targets.
+Every participant is pushed to answer far faster, because slow hops cause
+failed payments.
+
+A fraud check in the path therefore has a **per-hop budget** that is a small
+fraction of the whole. Commercial decisioning vendors publish figures on the
+order of 100 ms — Mastercard cites a 100–120 ms average for its cloud risk
+decisioning [16] — which includes a network round trip. Krediwall's **<5 ms**
+target is a design choice, not a regulatory number: an in-process check that
+is negligible next to the hops around it and removes the remote call.
 
 ```
-payer app → PSP switch → [ VAYU: <5ms verdict ] → NPCI → issuer → payee
-                              ↑  the only place
-                                 fraud can still
-                                 be killed in-flight
+payer app → PSP / lender switch → [ KREDIWALL: in-process verdict ] → NPCI → issuer → payee
+                                       ↑ decided here, before the debit is requested
 ```
 
-- **Card-network engines are too slow and too heavy.** They assume scheme-level telemetry (3-DS, network tokens, EMV data) and decision budgets of hundreds of milliseconds on dedicated infrastructure.
-- **UPI fraud engines don't model credit.** They watch account-level anomalies, not *limit-utilization mechanics*: a ₹49,999 debit looks unremarkable until you know the line was sanctioned 40 minutes ago and this is the second identical ticket to an unverified terminal.
-- **Post-hoc detection is already too late.** Once the rail settles, funds hop multi-layer mule networks within minutes — CBI found mule accounts are "used only once in most cases: once the money comes in, it is distributed to other accounts and the mother account is closed." [5]
+- **Existing systems are broad, not credit-specific.** NPCI provides banks a
+  fraud-monitoring solution that raises alerts and declines using AI/ML models
+  [3] built on transaction and device profiling [17]. Enterprise suites such
+  as Clari5, NICE Actimize, Feedzai, ACI and Mastercard Brighterion offer
+  cross-channel real-time decisioning with case management. [18] We have not
+  found public material describing CLOU-specific mechanics — sanction age,
+  limit burn, band-ticket repetition — in any of them. If your vendor
+  models these, use it; Krediwall's rules are small enough to run beside it.
+- **Post-hoc detection is too late.** Once funds settle they hop multi-layer
+  mule networks within minutes — CBI found mule accounts are "used only once
+  in most cases: once the money comes in, it is distributed to other accounts
+  and the mother account is closed." [5]
 
-## 3. The attack vectors Vayu targets
+## 3. The attack vectors Krediwall targets
 
 ### 3.1 Velocity spike / mule fanout
-A freshly approved credit line fires spend at many distinct merchant VPAs — or across geographically inconsistent cells — inside tens of seconds. Individually legitimate-looking txns; collectively a drain pattern.
-→ `telemetry.velocity-spike`: distinct payee-VPA and geo-cell counts per credit line inside a 60 s sliding window.
+A freshly approved credit line fires spend at many distinct payee VPAs — or
+across geographically inconsistent cells — inside tens of seconds.
+Individually legitimate-looking; collectively a drain pattern.
+→ `telemetry.velocity-spike`: distinct payee-VPA and geo-cell counts per
+credit line inside a sliding window (default 60 s).
 
 ### 3.2 Rapid multi-mule drain
-Repeat **just-under-threshold tickets** (₹45,000–₹50,000 — sized to duck reporting/KYC boundaries) to *unverified terminals*, burning ≥90% of the sanctioned limit inside the window. Signature of laundering through POS networks rather than real consumption.
-→ `telemetry.mule-drain`: cumulative window burn vs. sanctioned limit, band-ticket repetition, freshness of the credit line (`creditLineApprovedAtMs`).
+Repeat tickets inside an amount band to *unverified terminals*, burning most
+of the sanctioned limit inside the window. The default band (₹45,000–₹50,000)
+is **illustrative**: observed credit-funded tickets are far smaller (about
+₹850 on average for RuPay credit on UPI [19]), so large repeated tickets are
+unusual, but you should calibrate the band to your own ticket distribution.
+→ `telemetry.mule-drain`: sliding-window burn versus sanctioned limit,
+band-ticket repetition, and credit-line freshness (`creditLineApprovedAtMs`).
 
 ### 3.3 Counterparty reputation
-Payee VPAs already surfaced on national fraud infrastructure — citizen reports on **Chakshu** (Sanchar Saathi, launched March 2024) [6] and DoT's **Financial Fraud Risk Indicator** (launched May 2025; RBI directed all banks to integrate it for real-time decisions in June 2025). [7]
-→ `dpi.feed-reputation`: BLOCK on listed VPA, REVIEW on elevated risk score.
+DoT's **Financial Fraud Risk Indicator (FRI)**, launched in May 2025,
+classifies a **mobile number** as Medium, High or Very High risk of financial
+fraud, using inputs that include I4C's cybercrime portal, DoT's Chakshu
+platform and bank-reported intelligence. RBI advised banks on 30 June 2025 to
+integrate it. [7] FRI is delivered to onboarded stakeholders through DoT's
+Digital Intelligence Platform. [21]
+
+Chakshu itself is a citizen channel for reporting suspicious calls, SMS and
+WhatsApp messages, and states it is not for reporting financial-fraud losses
+[6][20]; it feeds FRI rather than publishing a VPA blocklist.
+→ `dpi.feed-reputation`: consumes an FRI snapshot **you** obtain
+legitimately, keyed by mobile number. It applies only to payees whose VPA is
+a phone number (for example `9876543210@ybl`); merchant and name-based VPAs
+pass through unchecked. BLOCK on a hard-listed number, REVIEW on a high score.
 
 ### 3.4 Multi-hop mule rings *(commercial seam)*
-Single-VPA lookups miss networks. `evaluateGraphNetwork()` is the reserved hook for scoring recipients against mule-ring graphs — the layer where stolen credit converges. I4C's suspect registry has already shared **24.67 lakh Layer-1 mule accounts** with participating banks, enabling ₹8,031 crore of declined transactions. [8]
+Single-number lookups miss networks. `evaluateGraphNetwork()` is the reserved
+hook for scoring recipients against mule-ring graphs — where stolen credit
+converges. I4C's suspect registry has already shared **24.67 lakh Layer-1
+mule accounts** with participating entities, helping decline ₹8,031 crore of
+transactions. [8]
 
-## 4. Why existing stacks miss this
+## 4. Why a lender-side, in-process check
 
-1. **Wrong asset model.** Savings-fraud systems ask "is this the real account holder?" Credit-on-UPI must also ask "is this line being *consumed* like a loan — or *laundered* like a mule?" Utilization velocity, band-ticket sizing and line age are new signals.
-2. **Wrong latency budget.** Anything that can't return a verdict in low single-digit milliseconds gets bypassed or sampled — and sampled fraud on a rail moving ₹97,913 crore *per day* [9] is a rounding-error defence.
-3. **Wrong data posture.** Shipping raw VPA/device telemetry to a cloud scorer breaks RBI data-sovereignty expectations and adds network latency. Vayu evaluates **in-memory, in-process**, keeping only non-reversible hashes.
-4. **Mule economics.** With ~4,000 mule accounts reported per day [10] and over 2 million mule identifiers shared with banks [11], the counterparty side of a transaction is now the dominant signal — and it must be checked synchronously, not reconciled overnight.
+1. **Different asset model.** Savings-fraud systems ask "is this the real
+   account holder?" Credit-funded UPI must also ask "is this line being
+   *consumed* like a loan — or *laundered* like a mule?" Utilisation velocity,
+   band-ticket sizing and line age are signals only the lender holds.
+2. **No remote hop.** A check that cannot keep up gets sampled or bypassed — on
+   a rail moving about ₹97,913 crore a day. [9] An in-process rule chain has no
+   network round trip to budget for.
+3. **Data stays in your process.** Raw VPA and device telemetry never leaves
+   the lender or PSP, which reduces the data-sharing and vendor-review burden.
+   This is data minimisation, not a compliance certification.
+4. **Mule economics.** With about 4,000 mule accounts reported per day [10] and
+   over 2 million mule identifiers shared with banks [11], the counterparty is
+   now a dominant signal — and it has to be checked synchronously.
 
 ## 5. The regulatory frame the engine must fit
 
-Credit-on-UPI fraud checks don't operate in a vacuum — they sit inside RBI's
-fraud-risk and incident-reporting machinery:
+Credit-funded UPI fraud checks sit inside RBI's fraud-risk and
+incident-reporting machinery:
 
 - **Pre-sanctioned credit lines on UPI** — the enabling circular leaves terms
   (limits, interest, credit period) to each bank's board-approved policy,
   which pushes fraud-control design onto the lender's own systems. [1]
-- **Master Directions on Fraud Risk Management (July 2024)** — all regulated
-  entities (now extended to NBFC-UL/ML, UCBs, RRBs, HFCs) must run a
+- **Master Directions on Fraud Risk Management (July 2024)** — regulated
+  entities (extended to NBFC-UL/ML, UCBs, RRBs, HFCs) must run a
   board-approved framework of **Early Warning Signals (EWS)** and **Red
   Flagged Accounts (RFA)**, with EWS *integrated into the Core Banking
   Solution or operational systems* — i.e., synchronous evaluation, not
   after-the-fact review — and frauds reported to RBI via the FMR portal
   within **14 days of classification**. [12]
 - **Limited customer liability (July 2017 circular)** — a customer who
-  reports an unauthorized transaction within **3 days** bears zero liability
+  reports an unauthorised transaction within **3 days** bears zero liability
   where the failure is in the bank's own systems; banks must run 24×7
   reporting channels. In practice this pushes the cost of undetected
   infrastructure-level fraud onto the institution. [13]
@@ -108,14 +175,14 @@ fraud-risk and incident-reporting machinery:
 
 ## 6. Design answer (how the code maps to the problem)
 
-| Constraint | Implementation |
+| Concern | Implementation |
 |---|---|
-| <5 ms verdict | Synchronous rule chain, first-`BLOCK` short-circuit, zero allocation on clean path |
-| High concurrency, no GC pauses | Fixed-capacity typed-array `RingBuffer` per credit line; reused scratch buffers |
-| RBI data sovereignty | In-memory only; FNV-1a/salted-SHA-256 hashes instead of retained VPAs |
+| Low-latency verdict | Synchronous in-process rule chain, first-`BLOCK` short-circuit, closure-free ring iteration; tail measured by `npm run bench` (p99 ≈ 2.6–2.9 µs on a Linux cloud VM; see the README) |
+| High volume, bounded memory | Fixed-size typed-array `RingBuffer` per credit line (~1.4 KB); LRU cap on tracked lines |
+| Data minimisation | In-process only; 32-bit bucket hashes instead of raw VPAs (not cryptographic); keyed-HMAC digests in feed lookups |
 | Fresh-line emphasis | `creditLineApprovedAtMs` drives BLOCK vs REVIEW severity in the drain rule |
-| National feed compliance | `FraudFeed` interface models Chakshu/FRI snapshot exchange via DIP |
-| Processor integration | `VayuAdapter` + `createHttpAdapter` (`POST /v1/evaluate`) drop into the switch pipeline |
+| National feeds | `FraudFeed` keyed by mobile number; snapshot supplied by the integrator |
+| Integration | `KrediwallAdapter` (library) and `createHttpAdapter` (`POST /v1/evaluate`) |
 
 ---
 
@@ -135,3 +202,10 @@ fraud-risk and incident-reporting machinery:
 12. RBI, *Master Directions on Fraud Risk Management* (EWS/RFA framework, FMR reporting), Jul 2024 — https://rbi.org.in/Scripts/NotificationUser.aspx?Id=12702 and (NBFC-UL/ML) https://rbi.org.in/SCRIPTS/BS_ViewMasDirections.aspx?id=12704
 13. RBI, *Customer Protection – Limiting Liability of Customers in Unauthorised Electronic Banking Transactions*, RBI/2017-18/15, 6 Jul 2017 — https://www.rbi.org.in/scripts/FS_Notification.aspx?Id=11040
 14. CERT-In, *Directions under s.70B(6), IT Act 2000* — mandatory cyber-incident reporting within 6 hours, 28 Apr 2022 — https://www.cert-in.org.in/Directions70B.jsp
+15. NPCI, *Reduction in response time of UPI transactions*, OC No. 214/2025-26, 26 Apr 2025 (effective 16 Jun 2025) — https://www.npci.org.in/uploads/UPI_OC_No_214_FY_2025_26_Reduction_in_response_time_of_UPI_Transaction_5d6cd9efe8.pdf
+16. Mastercard, *Risk Decisioning platform* (100–120 ms average in the cloud) — https://www.mastercard.com/global/en/business/cybersecurity-fraud-prevention/risk-decisioning/mastercard-risk-decisioning-platform.html
+17. The Times of India, *NPCI developing 'federated model' to counter fraud transactions using UPI*, 2025 — https://timesofindia.indiatimes.com/business/india-business/npci-developing-federated-model-to-counter-fraud-transactions-using-upi/articleshow/119913366.cms
+18. Clari5 (CustomerXPs) FAQ — https://www.clari5.com/faqs/ ; Ujjivan SFB case study (Finacle-integrated rollout in six months) — https://www.casestudies.com/company/clari5/case-study/ujjivan-sfb-fortifies-fraud-risk-management-enterprise-wide-with-clari5 ; NICE Actimize — https://info.niceactimize.com/Enterprise-Fraud.html ; ACI Worldwide, *Fraud Management in the cloud for UPI*, Nov 2020 — https://www.businesswire.com/news/home/20201103005209/en/ACI-Worldwide-Launches-Fraud-Management-in-the-Cloud-to-Protect-Against-Threat-of-UPI-Payments-Fraud ; Mastercard–PayU (Brighterion), Aug 2024 — https://www.mastercard.com/news/ap/en-in/newsroom/press-releases/en-in/2024/august-2024/mastercard-collaborates-with-payu-to-introduce-its-brighterion-ai-solutions-in-the-indian-market/
+19. Mint, *RuPay-on-UPI boosts card usage, but profits remain elusive* — https://www.livemint.com/industry/banking/rupay-credit-cards-upi-monetization-banks-fintechs-credit-card-usage-11784887621642.html
+20. Sanchar Saathi, Chakshu (*"not a facility for reporting about financial fraud"*) — https://www.sancharsaathi.gov.in/
+21. Press Information Bureau, *DoT's FRI — available through the Digital Intelligence Platform; outcomes* — https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=2153065

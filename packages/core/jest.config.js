@@ -8,6 +8,6 @@ module.exports = {
     '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.test.json' }],
   },
   moduleNameMapper: {
-    '^@vayu/(.*)$': '<rootDir>/../$1/src',
+    '^@krediwall/(.*)$': '<rootDir>/../$1/src',
   },
 };

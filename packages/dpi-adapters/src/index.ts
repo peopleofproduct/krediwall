@@ -1,2 +1,9 @@
-export type { FeedEntry, FraudFeed } from './feed';
-export { InMemoryFeed, chakshuFeed, friFeed, feedReputationRule } from './feed';
+export type { FeedEntry, FraudFeed, FriLevel } from './feed';
+export {
+  InMemoryFeed,
+  feedReputationRule,
+  friEntry,
+  friFeed,
+  mobileFromVpa,
+  normalizeMobile,
+} from './feed';

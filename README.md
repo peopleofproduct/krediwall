@@ -1,63 +1,119 @@
-# Panini Vayu (पाणिनि वायु)
+# Krediwall
 
-**High-velocity fraud firewall for Credit-on-UPI** — an open-source, zero-runtime-dependency, in-memory transaction evaluation engine that returns `ALLOW` / `REVIEW` / `BLOCK` verdicts in **under 5 milliseconds**, inside the UPI authorization window.
+**An open-source, in-process fraud firewall for credit-funded UPI payments.**
+Krediwall (*credit + wall* — a checkpoint on the credit lane, a Panini project) scores each authorisation as `ALLOW`, `REVIEW` or `BLOCK` using signals only a lender has — credit limit, utilisation, credit-line age — before the money moves.
 
-Vayu (वायु — *wind, velocity*) targets the fraud vector unique to **Credit Line on UPI (CLOU)** and **RuPay credit cards on UPI**: when a mule network drains a freshly sanctioned credit line, the money lost is the *lender's capital*, not the customer's deposit — and it is gone in the ~200ms it takes UPI to settle.
+| | |
+|---|---|
+| **What it is** | A TypeScript library plus a small HTTP gateway that runs *inside your process*, with a design target of under 5 ms per verdict. |
+| **Who it's for** | Lenders (banks, small finance banks, NBFCs) that fund UPI payments from credit lines or RuPay credit cards, and the fintech apps that front them. |
+| **What it is not** | Not an ML platform, not a case-management or AML suite, and not a replacement for NPCI's fraud monitoring. It adds lender-side credit context to what you already run. |
+| **Maturity** | **Alpha.** Rules and thresholds are illustrative and not tuned on production data. Not yet published to npm. |
 
-## Why this exists
+## The problem in one paragraph
 
-- UPI now clears **~24 billion transactions a month** (~₹29.4 lakh crore, September 2026) — and fraud is scaling faster than volumes: **16.29 lakh incidents and ₹1,226 crore reported in FY 2025–26** (partial year), up from 4.07 lakh / ₹242 crore in FY 2021–22 (Ministry of Finance, Rajya Sabha).
-- Credit on UPI just went from pilot to rollout: Karnataka Bank (with Navi) and Suryoday SFB (with Paytm) are live, and **HDFC, Axis and Kotak are reportedly preparing launches** — while RBI has **directed** banks to integrate real-time fraud signals (DoT's Financial Fraud Risk Indicator, June 2025 advisory).
-- Card-network fraud engines assume hundreds of milliseconds and card-scheme telemetry; UPI engines were built for deposit debits. Neither was designed for *credit velocity* — a credit line can be drained 90%+ inside 60 seconds by repeat just-under-threshold tickets to unverified mule terminals.
+When a savings-account UPI payment is fraudulent, the victim loses their own balance. When a **credit-funded** UPI payment is fraudulent, the loss is the **lender's capital** — and UPI is push-and-final, so there is no later chance to pull it back. Credit Line on UPI (CLOU) and RuPay credit cards on UPI put lender-funded money on a real-time rail, and mule networks can empty a fresh credit line quickly. Generic UPI and card fraud systems do not see credit-line state such as the sanctioned limit, how much of it has been burned in the last minute, or how new the line is. Krediwall does. Read the longer [problem statement](docs/problem-statement.md).
+
+## See it work in 10 seconds
+
+```bash
+npm ci
+npm run demo
+```
+
+```
+2. Fresh credit line sprayed across many payees in seconds
+  +   4s  BLOCK     ₹9,000  payee 5
+            5 distinct payee VPAs in 60000ms (limit 4)  (48 µs)
+
+3. Repeat large tickets to unverified terminals drain ~100% of the limit
+  +   7s  BLOCK    ₹49,999  unverified terminal
+            100.0% of limit burned via 2 repeat band tickets to unverified terminal  (23 µs)
+```
+
+## How a verdict is produced
+
+```
+ UPI app / PSP / lender switch
+        │  one authorisation: payer & payee VPA, amount, credit limit,
+        │  credit-line age, terminal-verified flag, optional geo cell
+        ▼
+ ┌─ KrediwallAdapter (library)  or  POST /v1/evaluate (HTTP gateway) ─────────┐
+ │  FirewallEngine runs rules in order and stops at the first BLOCK           │
+ │    • velocity-spike  — too many distinct payees / places inside a window   │
+ │    • mule-drain      — repeat tickets burning most of the limit            │
+ │    • feed-reputation — payee mobile number flagged in a fraud-feed snapshot│
+ │    • your own rules  — implement the `Rule` interface                      │
+ └──────────────▶  ALLOW | REVIEW | BLOCK  + reasons + elapsedMicros  ────────┘
+```
+
+Request and response over HTTP:
+
+```jsonc
+// POST /v1/evaluate
+{ "txnId": "t-1", "creditLineId": "line-42", "payerVpa": "user@okbank",
+  "payeeVpa": "pos1@ybl", "amountPaise": 4999900, "creditLimitPaise": 10000000,
+  "timestampMs": 1760000000000, "terminalVerified": false }
+
+// 200 OK
+{ "verdict": "BLOCK",
+  "hits": [{ "rule": "telemetry.mule-drain", "verdict": "BLOCK",
+             "reason": "100.0% of limit burned via 2 repeat band tickets to unverified terminal" }],
+  "elapsedMicros": 23.4 }
+```
 
 ## Repository layout
 
 ```
 packages/
-├── core/               @vayu/core             — evaluation loop, verdict types (zero deps)
-├── telemetry-rules/    @vayu/telemetry-rules  — velocity-spike & mule-drain heuristics,
-│                                                 fixed-size ring buffers (zero deps)
-├── dpi-adapters/       @vayu/dpi-adapters     — Chakshu / FRI fraud-feed connectors
-└── enterprise-proxy/   @vayu/enterprise-proxy — switch-pipeline adapter, HTTP front,
-                                                 stubs for paid graph/billing features
+├── core/               @krediwall/core             evaluation loop and verdict types
+├── telemetry-rules/    @krediwall/telemetry-rules  velocity-spike and mule-drain rules, ring buffers, LRU map
+├── dpi-adapters/       @krediwall/dpi-adapters     adapters for Digital Public Infrastructure fraud feeds (DoT FRI)
+└── enterprise-proxy/   @krediwall/enterprise-proxy open adapter + HTTP gateway + compliance deadline helpers,
+                                                   plus stubs where commercial modules plug in
+examples/demo.mjs       npm run demo
+benchmarks/run.mjs      npm run bench
 ```
 
-## Quickstart
-
-```bash
-npm ci
-npm run build   # tsc -b across all workspaces
-npm test        # jest — all 4 suites must pass
-```
+*DPI here means Digital Public Infrastructure (India's public rails), not deep packet inspection.* Packages are workspace-local for now; `npm install @krediwall/...` will work once they are published.
 
 ```ts
-import { VayuAdapter } from '@vayu/enterprise-proxy';
-import { creditOnUpiRules } from '@vayu/telemetry-rules';
-import { createHttpAdapter } from '@vayu/enterprise-proxy';
+import { KrediwallAdapter, createHttpAdapter } from '@krediwall/enterprise-proxy';
+import { creditOnUpiRules } from '@krediwall/telemetry-rules';
 
-const adapter = new VayuAdapter(creditOnUpiRules());
+const adapter = new KrediwallAdapter(creditOnUpiRules());
 createHttpAdapter(adapter).listen(8080);
-// POST /v1/evaluate {txn…} → {verdict: "ALLOW"|"REVIEW"|"BLOCK", hits, elapsedMicros}
 ```
 
-## Design guardrails
+## Design guardrails — and what we measure
 
-- **Sub-5ms verdicts** — synchronous rules, short-circuit on first `BLOCK`, no allocation on the clean path (enforced in `packages/core/tests/firewall.test.ts`).
-- **Zero runtime dependencies** in `core` and `telemetry-rules` — native typed-array data structures only.
-- **Bounded memory** — per-entity state lives in fixed-capacity rings; no per-transaction heap growth under sustained load.
-- **PII-safe telemetry** — VPAs and geo cells are stored as non-reversible hashes; feed lookups use salted digests. Aligned with RBI data-sovereignty expectations.
-- **Open-core** — the engine and heuristics are Apache-2.0; graph-network scoring and billing metering are stubbed seams for the commercial tier.
+- **Latency target: under 5 ms per verdict.** It is an engineering budget we chose so the in-process check is negligible next to the network hops around it; it is not a regulatory figure. `npm run bench` (2M evaluations over 100k credit lines, starter rule set, single thread) measured, on a Linux x64 cloud VM (8 vCPU Intel Xeon, Node 24), **p50 ≈ 0.9 µs, p99 ≈ 2.6–2.9 µs, p99.9 ≈ 6.7–7.4 µs**; across three runs 0–1 of 2M evaluations exceeded 5 ms (worst case 3.8–5.3 ms) and 23–37 exceeded 1 ms. On a heavily loaded laptop the p99 was 9–15 µs and rare outliers reached tens of ms alongside V8 garbage-collection pauses. It is a measurement, not a hard real-time guarantee; run it on your own hardware.
+- **Zero runtime dependencies** in `core` and `telemetry-rules`; everything uses Node built-ins.
+- **Allocation-light, bounded state.** Rules keep per-credit-line history in fixed-size typed-array rings (about 1.4 KB per tracked line at default settings) and the set of tracked lines is LRU-capped (`maxTrackedLines`, default 100,000). Each call still allocates a couple of small objects; it is not allocation-free.
+- **Data minimisation, not a privacy guarantee.** Rules keep 32-bit bucket hashes instead of raw VPAs. That is a fast bucketing hash, not cryptographic — low-entropy identifiers can be recovered by dictionary search. Fraud-feed lookups use keyed HMAC digests. Everything runs in your process; the library logs nothing and sends nothing. None of this is a compliance certification.
+- **Open core.** The engine, starter rules and open adapters are Apache-2.0. Graph-network scoring and automated regulatory reporters are not in this repository; the stubs are integration seams.
+
+## What Krediwall does not do (yet)
+
+- No machine-learning scoring, device or behavioural-biometric signals, or consortium data.
+- No case management, alert queue or analyst workflow.
+- The starter thresholds are illustrative; there is no public labelled dataset to tune them on, so calibrate against your own traffic.
+- Fraud feeds are snapshots you supply. DoT's FRI is keyed by **mobile number** and delivered to onboarded stakeholders through the Digital Intelligence Platform; this library does not call any government API, and the feed rule only applies to payees whose VPA is a phone number.
+- Merchant-side signals (MCC risk, terminal reputation) are limited to a verified/unverified flag.
 
 ## Documentation
 
-- [Problem statement](docs/problem-statement.md) — the Credit-on-UPI threat model, the 200ms constraint, and why existing fraud stacks miss it
-- [Market opportunity](docs/market-opportunity.md) — UPI scale, CLOU inflection, fraud losses, and why now, with citations
-- [Commercial strategy](docs/commercial-strategy.md) — open-core split, pricing matrix, and SRO alignment
+- [Executive summary](docs/executive-summary.md) — one page for risk, fraud and product leads
+- [Problem statement](docs/problem-statement.md) — the threat model and why credit-funded UPI is different
+- [Market opportunity](docs/market-opportunity.md) — volumes, fraud data and timing, with citations
+- [Commercial strategy](docs/commercial-strategy.md) — open-core split and pricing
+- [Glossary](docs/glossary.md) — CLOU, VPA, PSP, TPAP, FRI, DIP, EWS, FMR and more
 
-## Status
+## Project
 
-Early scaffold — Phase 1/2 complete (engine + first heuristics + proxy stubs + CI). Interfaces may change before `0.1.0` stabilises.
+- [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [Trademarks](TRADEMARKS.md) · [NOTICE](NOTICE)
+- *Naming:* **Panini** is the umbrella for People of Product's open-source work for India's digital public infrastructure (see the sibling Panini project). **Krediwall** is this product.
 
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE). Maintained by [People of Product](https://github.com/peopleofproduct).
+Apache-2.0 — see [LICENSE](LICENSE). Copyright 2026 Kapil. Maintained by [People of Product](https://github.com/peopleofproduct)™. The Apache licence does not grant any trademark rights; see [TRADEMARKS.md](TRADEMARKS.md).

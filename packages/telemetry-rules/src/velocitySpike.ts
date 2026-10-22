@@ -1,5 +1,6 @@
-import type { Rule } from '@vayu/core';
-import { Verdict } from '@vayu/core';
+import type { Rule } from '@krediwall/core';
+import { Verdict } from '@krediwall/core';
+import { LruMap } from './lruMap';
 import { RingBuffer } from './ringBuffer';
 import { hashVpa } from './vpaHash';
 
@@ -12,15 +13,25 @@ export interface VelocitySpikeOptions {
    * geographical-mismatch leg of the rule.
    */
   readonly maxDistinctGeoCells?: number;
-  /** Sliding window in milliseconds (Credit-on-UPI default: 60s). */
+  /** Sliding window in milliseconds. */
   readonly windowMs: number;
-  /** Ring capacity per credit line; bounds memory per entity. */
+  /**
+   * Ring capacity per credit line; bounds memory per entity (each ring costs
+   * 16 bytes per slot). If more transactions than this arrive inside the
+   * window the oldest are dropped. Default 32.
+   */
   readonly capacity?: number;
+  /**
+   * Max credit lines tracked at once. Least-recently-seen lines are evicted
+   * (their history restarts if they reappear). Default 100,000.
+   */
+  readonly maxTrackedLines?: number;
 }
 
 interface LineRings {
   vpa: RingBuffer;
-  geo: RingBuffer;
+  /** Allocated lazily, only once a geo cell is seen and the geo check is on. */
+  geo: RingBuffer | null;
 }
 
 /** Count distinct values collected in `scratch[0..n)`, zero-alloc. */
@@ -42,37 +53,36 @@ function countDistinct(scratch: Float64Array, n: number): number {
 /**
  * Velocity spike: a single credit line spraying spend across many distinct
  * merchant VPAs — optionally also across mismatched geographical cells —
- * inside a short window. The classic mule-fanout pattern for draining a
- * freshly approved credit line before limits kick in.
+ * inside a short sliding window. The classic mule-fanout pattern for
+ * draining a freshly approved credit line before limits kick in.
  *
- * State is a per-line pair of rings holding hashed VPAs/geos; distinct
- * counts run over reused scratch buffers so the hot path allocates nothing
- * once the per-line rings exist.
+ * State is a per-line pair of fixed-size rings holding 32-bit bucket hashes
+ * (not raw strings); the set of tracked lines is LRU-capped. Distinct counts
+ * run over a reused scratch buffer with closure-free ring iteration.
  */
 export function velocitySpike(options: VelocitySpikeOptions): Rule {
   const name = 'telemetry.velocity-spike';
-  const capacity = options.capacity ?? 64;
-  const rings = new Map<string, LineRings>();
+  const capacity = options.capacity ?? 32;
+  const lines = new LruMap<string, LineRings>(options.maxTrackedLines ?? 100_000);
   const scratch = new Float64Array(capacity);
 
   return {
     name,
     evaluate(txn, ctx) {
-      let line = rings.get(txn.creditLineId);
+      let line = lines.get(txn.creditLineId);
       if (line === undefined) {
-        line = { vpa: new RingBuffer(capacity), geo: new RingBuffer(capacity) };
-        rings.set(txn.creditLineId, line);
+        line = { vpa: new RingBuffer(capacity), geo: null };
+        lines.set(txn.creditLineId, line);
       }
       line.vpa.push(ctx.nowMs, hashVpa(txn.payeeVpa));
-      if (txn.geoCell !== undefined) {
+      if (txn.geoCell !== undefined && options.maxDistinctGeoCells !== undefined) {
+        line.geo ??= new RingBuffer(capacity);
         line.geo.push(ctx.nowMs, hashVpa(txn.geoCell));
       }
 
-      let n = 0;
-      line.vpa.forEachWithin(options.windowMs, ctx.nowMs, (_ts, aux) => {
-        scratch[n++] = aux;
-      });
-      const distinctVpas = countDistinct(scratch, n);
+      const nVpa = line.vpa.countWithin(options.windowMs, ctx.nowMs);
+      for (let i = 0; i < nVpa; i++) scratch[i] = line.vpa.auxAt(i);
+      const distinctVpas = countDistinct(scratch, nVpa);
       if (distinctVpas > options.maxDistinctMerchants) {
         return {
           rule: name,
@@ -81,12 +91,10 @@ export function velocitySpike(options: VelocitySpikeOptions): Rule {
         };
       }
 
-      if (options.maxDistinctGeoCells !== undefined) {
-        n = 0;
-        line.geo.forEachWithin(options.windowMs, ctx.nowMs, (_ts, aux) => {
-          scratch[n++] = aux;
-        });
-        const distinctGeos = countDistinct(scratch, n);
+      if (options.maxDistinctGeoCells !== undefined && line.geo !== null) {
+        const nGeo = line.geo.countWithin(options.windowMs, ctx.nowMs);
+        for (let i = 0; i < nGeo; i++) scratch[i] = line.geo.auxAt(i);
+        const distinctGeos = countDistinct(scratch, nGeo);
         if (distinctGeos > options.maxDistinctGeoCells) {
           return {
             rule: name,
@@ -98,7 +106,7 @@ export function velocitySpike(options: VelocitySpikeOptions): Rule {
       return null;
     },
     reset() {
-      rings.clear();
+      lines.clear();
     },
   };
 }
