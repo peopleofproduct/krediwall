@@ -1,4 +1,11 @@
-export type { FeedEntry, FraudFeed, FriLevel } from './feed';
+export type {
+  FeedEntry,
+  FeedReputationOptions,
+  FeedRow,
+  FraudFeed,
+  FriLevel,
+  VpaResolver,
+} from './feed';
 export {
   InMemoryFeed,
   feedReputationRule,
@@ -6,6 +13,7 @@ export {
   friFeed,
   mobileFromVpa,
   normalizeMobile,
+  normalizeVpa,
 } from './feed';
 export { loadFriSnapshotFile, parseFriSnapshot } from './snapshotFile';
 export type {

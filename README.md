@@ -118,7 +118,7 @@ createHttpAdapter(adapter).listen(8080);
 - No machine-learning scoring, device or behavioural-biometric signals, or consortium data.
 - No case management, alert queue or analyst workflow.
 - The starter thresholds are illustrative; there is no public labelled dataset to tune them on, so calibrate against your own traffic.
-- Fraud feeds are snapshots you supply. DoT's FRI is keyed by **mobile number** and delivered to onboarded stakeholders through the Digital Intelligence Platform; this library does not call any government API, and the feed rule only applies to payees whose VPA is a phone number.
+- Fraud feeds are snapshots you supply. DoT's FRI is keyed by **mobile number** and delivered to onboarded stakeholders through the Digital Intelligence Platform; this library does not call any government API. Phone-number VPAs match directly; merchant handles need your `resolveMobile` registry lookup or `vpa`-keyed feed rows — payees matching neither pass through unchecked.
 - Merchant-side signals (MCC risk, terminal reputation) are limited to a verified/unverified flag.
 
 ## Documentation

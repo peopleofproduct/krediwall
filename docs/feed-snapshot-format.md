@@ -22,16 +22,21 @@ file you hand to `loadFriSnapshotFile(feed, path, opts)`.
 
 - `version` — must be `1` when present.
 - `generatedAtMs` — optional but recommended; drives the staleness check.
-- `entries` — required array. Each row needs a `mobile` plus **one** signal:
+- `entries` — required array. Each row needs an identifier — `mobile`,
+  `vpa` or both — plus **one** signal:
   - `level`: one of `"medium"`, `"high"`, `"very_high"` (mapped to risk
     scores 0.5 / 0.75 / 1.0 by the library — that mapping is our policy,
     not a DoT value);
-  - `listed`: `true` marks the number hard-listed (a BLOCK signal);
+  - `listed`: `true` marks the identifier hard-listed (a BLOCK signal);
   - `riskScore`: a number in `[0, 1]` for non-FRI feeds.
 
 `mobile` accepts the usual Indian formats — `9876543210`, `+919876543210`,
-`09876 543210` — and is normalised to 10 digits before storage. Rows that
-fail normalisation or carry no signal are rejected, not silently loaded.
+`09876 543210` — and is normalised to 10 digits before storage. `vpa` rows
+are trimmed and lowercased and are for feeds that identify mule *accounts*
+rather than phones (bank-internal blocklists, suspect registries); the two
+identifier spaces are namespaced and can never cross-match. Rows whose
+identifiers all fail normalisation, or that carry no signal, are rejected,
+not silently loaded.
 
 ## Loader semantics
 
@@ -60,6 +65,13 @@ const result = loadFriSnapshotFile(feed, '/var/feeds/fri-latest.json', {
   and the file.
 - If your DIP feed is mobile-keyed CSV rather than JSON, translate upstream
   and emit this format; keep the adapter thin.
-- Feed coverage only reaches payees whose VPA handle *is* a phone number
-  (`9876543210@ybl`). Merchant and name-based handles cannot be resolved
-  and pass through unchecked — that is a data limitation, not a bug.
+  `examples/translate-dip-export.mjs` is a ready template — it reads CSV,
+  JSON arrays and NDJSON, guesses common column names, normalises
+  identifiers and emits this format (including `vpa` rows and the
+  listed-by-default convention for bare identifier lists).
+- Phone-number VPAs match mobile rows directly. For `merchant@paytm`-style
+  handles there are two routes: wire `resolveMobile` (your merchant
+  registry — every onboarded merchant has a mobile on file) into
+  `feedReputationRule`, or ship `vpa`-keyed rows from feeds that identify
+  accounts. Payees matching none pass through unchecked — that is a data
+  limitation, not a bug.

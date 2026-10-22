@@ -141,11 +141,19 @@ transaction.
 
 - Produce `fri-latest.json` (format above) from your DIP/FRI feed on your
   own cadence, then `loadFriSnapshotFile` on a refresh loop or on file
-  change. Keyed-HMAC digests: keep `FRI_HMAC_KEY` in a secret store, and
-  rotate by ingesting with the new key (lookups must use the same key as
-  the ingest).
+  change. `examples/translate-dip-export.mjs` converts the common export
+  shapes (CSV, JSON array, NDJSON) into the snapshot format — adapt its
+  column guesses to your delivery. Keyed-HMAC digests: keep `FRI_HMAC_KEY`
+  in a secret store, and rotate by ingesting with the new key (lookups
+  must use the same key as the ingest).
 - Monitor `result.stale` and `result.rejected`. A jump in rejections means
   the upstream translator broke; a stale flag means the feed stopped.
+- **Coverage beyond phone-number VPAs.** Mobile rows only match payees
+  whose VPA handle *is* a number (`9876543210@ybl`). Close the gap two
+  ways: pass `resolveMobile` to `feedReputationRule` to map merchant
+  handles to their onboarding mobile from your own registry, and/or ship
+  `vpa`-keyed rows in the snapshot for feeds that identify mule accounts
+  directly (see `docs/feed-snapshot-format.md`).
 
 ## Limits you should know
 

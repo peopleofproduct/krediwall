@@ -181,3 +181,54 @@ describe('FRI snapshot file', () => {
     expect(() => loadFriSnapshotFile(feed, snapPath)).toThrow('entries');
   });
 });
+
+describe('VPA-keyed rows and the resolver seam', () => {
+  it('loads and matches vpa-keyed rows for account-level feeds', () => {
+    const feed = friFeed('secret-key');
+    feed.ingest([{ vpa: 'muleacct@ybl', listed: true, riskScore: 1 }]);
+    expect(feed.lookupVpa('muleacct@ybl')).toEqual({ listed: true, riskScore: 1 });
+    expect(feed.lookupVpa('MuleAcct@YBL')).not.toBeNull(); // normalised
+    expect(feed.lookup('9876543210')).toBeNull(); // separate namespace
+  });
+
+  it('blocks a merchant VPA that appears in the feed directly', () => {
+    const feed = friFeed('secret-key');
+    feed.ingest([{ vpa: 'muleacct@ybl', listed: true, riskScore: 1 }]);
+    const rule = feedReputationRule([feed]);
+    const hit = rule.evaluate(txn('muleacct@ybl'), { nowMs: 0 });
+    expect(hit?.verdict).toBe(Verdict.Block);
+  });
+
+  it('resolves a non-phone VPA to a mobile via the integrator registry', () => {
+    const feed = friFeed('secret-key');
+    feed.ingest([{ mobile: '9876543210', listed: true, riskScore: 1 }]);
+    const registry = new Map([['shop42@paytm', '9876543210']]);
+    const rule = feedReputationRule([feed], 0.7, {
+      resolveMobile: (vpa) => registry.get(vpa) ?? null,
+    });
+    expect(rule.evaluate(txn('shop42@paytm'), { nowMs: 0 })?.verdict).toBe(Verdict.Block);
+    // Unknown VPAs still pass through unchecked
+    expect(rule.evaluate(txn('unknown@paytm'), { nowMs: 0 })).toBeNull();
+  });
+
+  it('does not cross-match mobiles against the vpa namespace', () => {
+    const feed = friFeed('secret-key');
+    feed.ingest([{ vpa: '9876543210', listed: true, riskScore: 1 }]); // pathological row
+    expect(feed.lookup('9876543210')).toBeNull();
+    expect(feed.lookupVpa('9876543210')).toBeNull(); // no '@' → not a VPA
+  });
+
+  it('loads mixed mobile and vpa rows from a snapshot file', () => {
+    const parsed = parseFriSnapshot(
+      JSON.stringify({
+        entries: [
+          { mobile: '9876543210', level: 'high' },
+          { vpa: 'muleacct@ybl', listed: true },
+          { vpa: 'both@ybl', mobile: '9123456789', riskScore: 0.9 },
+        ],
+      }),
+    );
+    expect(parsed.rows).toHaveLength(3);
+    expect(parsed.rejected).toBe(0);
+  });
+});
