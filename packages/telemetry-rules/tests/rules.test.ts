@@ -82,6 +82,37 @@ describe('velocitySpike', () => {
       expect(hit).toBeNull();
     }
   });
+
+  it('blocks on geo mismatch even when distinct VPAs stay under limit', () => {
+    const rule = velocitySpike({
+      maxDistinctMerchants: 10,
+      maxDistinctGeoCells: 2,
+      windowMs: 60_000,
+    });
+    let last = null;
+    const cells = ['blr', 'blr', 'mum', 'del']; // 3rd distinct cell fires
+    for (let i = 0; i < cells.length; i++) {
+      last = rule.evaluate(
+        txn({ geoCell: cells[i], timestampMs: T0 + i * 1_000 }),
+        { nowMs: T0 + i * 1_000 },
+      );
+    }
+    expect(last?.verdict).toBe(Verdict.Block);
+    expect(last?.reason).toContain('geo cells');
+  });
+
+  it('skips the geo check when transactions carry no geoCell', () => {
+    const rule = velocitySpike({
+      maxDistinctMerchants: 10,
+      maxDistinctGeoCells: 1,
+      windowMs: 60_000,
+    });
+    for (let i = 0; i < 5; i++) {
+      expect(
+        rule.evaluate(txn({ timestampMs: T0 + i }), { nowMs: T0 + i }),
+      ).toBeNull();
+    }
+  });
 });
 
 describe('muleDrain', () => {
@@ -135,5 +166,41 @@ describe('muleDrain', () => {
       { nowMs: T0 + 1_000 },
     );
     expect(hit).toBeNull();
+  });
+
+  it('blocks fresh lines but only reviews stale lines on the same pattern', () => {
+    const opts = {
+      limitBurnRatio: 0.9,
+      windowMs: 60_000,
+      ticketFloorPaise: 45_000_00,
+      ticketCeilPaise: 50_000_00,
+      minRepeats: 2,
+      freshLineMaxAgeMs: 86_400_000, // 24h
+    };
+    const unverified = { terminalVerified: false, amountPaise: 49_999_00 };
+
+    const freshRule = muleDrain(opts);
+    const approved1hAgo = T0 - 3_600_000;
+    freshRule.evaluate(
+      txn({ ...unverified, creditLineApprovedAtMs: approved1hAgo }),
+      { nowMs: T0 },
+    );
+    const freshHit = freshRule.evaluate(
+      txn({ ...unverified, creditLineApprovedAtMs: approved1hAgo, timestampMs: T0 + 1 }),
+      { nowMs: T0 + 1 },
+    );
+    expect(freshHit?.verdict).toBe(Verdict.Block);
+
+    const staleRule = muleDrain(opts);
+    const approved10dAgo = T0 - 864_000_000;
+    staleRule.evaluate(
+      txn({ ...unverified, creditLineApprovedAtMs: approved10dAgo }),
+      { nowMs: T0 },
+    );
+    const staleHit = staleRule.evaluate(
+      txn({ ...unverified, creditLineApprovedAtMs: approved10dAgo, timestampMs: T0 + 1 }),
+      { nowMs: T0 + 1 },
+    );
+    expect(staleHit?.verdict).toBe(Verdict.Review);
   });
 });

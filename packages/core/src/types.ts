@@ -29,6 +29,8 @@ export interface Transaction {
   readonly mcc?: number;
   /** Coarse geography bucket (city/cell id), never raw lat-long. */
   readonly geoCell?: string;
+  /** When the credit line was approved/disbursed, epoch ms. Feeds fresh-line heuristics. */
+  readonly creditLineApprovedAtMs?: number;
   /** Whether the acquiring terminal passed PSP verification. */
   readonly terminalVerified: boolean;
 }

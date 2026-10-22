@@ -12,6 +12,13 @@ export interface MuleDrainOptions {
   readonly ticketCeilPaise: number;
   /** Minimum repeat tickets inside the band required to flag. */
   readonly minRepeats: number;
+  /**
+   * Max age (ms) for a line to count as "freshly approved". When set and the
+   * transaction carries `creditLineApprovedAtMs`, a drain pattern on an
+   * older line is downgraded to REVIEW instead of BLOCK — still anomalous,
+   * but the signature fraud pattern targets fresh disbursements.
+   */
+  readonly freshLineMaxAgeMs?: number;
 }
 
 interface LineState {
@@ -32,6 +39,12 @@ interface LineState {
 export function muleDrain(options: MuleDrainOptions): Rule {
   const name = 'telemetry.mule-drain';
   const lines = new Map<string, LineState>();
+
+  const isFresh = (txn: Parameters<Rule['evaluate']>[0], nowMs: number): boolean => {
+    if (options.freshLineMaxAgeMs === undefined) return true;
+    if (txn.creditLineApprovedAtMs === undefined) return true; // unknown → assume fresh (conservative)
+    return nowMs - txn.creditLineApprovedAtMs <= options.freshLineMaxAgeMs;
+  };
 
   return {
     name,
@@ -54,10 +67,13 @@ export function muleDrain(options: MuleDrainOptions): Rule {
 
       const burned = s.totalPaise / txn.creditLimitPaise;
       if (s.bandTickets >= options.minRepeats && burned >= options.limitBurnRatio) {
+        const fresh = isFresh(txn, ctx.nowMs);
         return {
           rule: name,
-          verdict: Verdict.Block,
-          reason: `${(burned * 100).toFixed(1)}% of limit burned via ${s.bandTickets} repeat band tickets to unverified terminal`,
+          verdict: fresh ? Verdict.Block : Verdict.Review,
+          reason:
+            `${(burned * 100).toFixed(1)}% of limit burned via ${s.bandTickets} ` +
+            `repeat band tickets to unverified terminal${fresh ? '' : ' (stale credit line)'}`,
         };
       }
       return null;
