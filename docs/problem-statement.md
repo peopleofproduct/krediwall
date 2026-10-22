@@ -2,6 +2,32 @@
 
 > Why a credit line riding a 200-millisecond rail needs a new kind of firewall.
 
+## 0. First principles: the velocity–liquidity safety valve
+
+Traditional banking fraud defence rests on an implicit safety valve — the
+**velocity–liquidity trade-off**. Until now, Indian payment systems occupied
+one of two safe quadrants:
+
+```
+Lending / credit cards  ──► [ high capital exposure ] ──► [ hours/days to underwrite ]
+Retail P2P/P2M UPI      ──► [ low capital risk (own $) ] ──► [ <200ms rails ]
+
+Credit-on-UPI           ──► [ HIGH CAPITAL EXPOSURE ]   ┼──► [ <200 MILLISECOND RAILS ]
+```
+
+- Credit products always carried high capital exposure, but granted liquidity
+  over hours or days — leaving a wide window for batch underwriting, manual
+  review and pre-release compliance blocks.
+- UPI always executed instantly, but could only move money the customer
+  already had — the blast radius was bounded by an account balance.
+
+Credit Line on UPI collapses both safety valves at once: a compromised credit
+account lets a fraudster draw down the **lender's pre-sanctioned balance sheet
+in real time**, inside the same ~200 ms window that made UPI the world's
+highest-volume rail. Anything that wants to stop it must decide **before
+settlement** — which is why the evaluation budget collapses to single-digit
+milliseconds.
+
 ## 1. What changed
 
 In September 2023 the RBI opened UPI to **pre-sanctioned credit lines** as a funding account — previously UPI could only debit savings accounts, overdraft accounts, prepaid wallets and (from 2022) RuPay credit cards. [1] The product was launched at Global Fintech Fest 2023 alongside UPI Lite X and conversational payments. [2]
@@ -56,7 +82,31 @@ Single-VPA lookups miss networks. `evaluateGraphNetwork()` is the reserved hook 
 3. **Wrong data posture.** Shipping raw VPA/device telemetry to a cloud scorer breaks RBI data-sovereignty expectations and adds network latency. Vayu evaluates **in-memory, in-process**, keeping only non-reversible hashes.
 4. **Mule economics.** With ~4,000 mule accounts reported per day [10] and over 2 million mule identifiers shared with banks [11], the counterparty side of a transaction is now the dominant signal — and it must be checked synchronously, not reconciled overnight.
 
-## 5. Design answer (how the code maps to the problem)
+## 5. The regulatory frame the engine must fit
+
+Credit-on-UPI fraud checks don't operate in a vacuum — they sit inside RBI's
+fraud-risk and incident-reporting machinery:
+
+- **Pre-sanctioned credit lines on UPI** — the enabling circular leaves terms
+  (limits, interest, credit period) to each bank's board-approved policy,
+  which pushes fraud-control design onto the lender's own systems. [1]
+- **Master Directions on Fraud Risk Management (July 2024)** — all regulated
+  entities (now extended to NBFC-UL/ML, UCBs, RRBs, HFCs) must run a
+  board-approved framework of **Early Warning Signals (EWS)** and **Red
+  Flagged Accounts (RFA)**, with EWS *integrated into the Core Banking
+  Solution or operational systems* — i.e., synchronous evaluation, not
+  after-the-fact review — and frauds reported to RBI via the FMR portal
+  within **14 days of classification**. [12]
+- **Limited customer liability (July 2017 circular)** — a customer who
+  reports an unauthorized transaction within **3 days** bears zero liability
+  where the failure is in the bank's own systems; banks must run 24×7
+  reporting channels. In practice this pushes the cost of undetected
+  infrastructure-level fraud onto the institution. [13]
+- **CERT-In 6-hour incident reporting** — since April 2022, cyber incidents
+  must be reported to CERT-In within 6 hours of notice — the window the
+  paid-tier automated reporters are built against. [14]
+
+## 6. Design answer (how the code maps to the problem)
 
 | Constraint | Implementation |
 |---|---|
@@ -82,3 +132,6 @@ Single-VPA lookups miss networks. `evaluateGraphNetwork()` is the reserved hook 
 9. NPCI product statistics via Business Standard, *UPI volumes at 24.07 bn in September 2026* — https://www.business-standard.com/finance/news/upi-transactions-september-2026-mdr-october-15-npci-126100100510_1.html
 10. I4C / NCERT webinar deck, *Trends in Cybercrimes & Banking abuse*, Aug 2024 — https://ciet.ncert.gov.in/storage/app/public/files/17/webinar01/August2024/08032024.pdf
 11. Hindustan Times, *I4C shared details of 2 million+ mule accounts with banks: MHA* — https://www.hindustantimes.com/india-news/14c-shared-details-of-2-million-mule-accounts-8-lakh-suspects-with-banks-mha-101743000148884.html
+12. RBI, *Master Directions on Fraud Risk Management* (EWS/RFA framework, FMR reporting), Jul 2024 — https://rbi.org.in/Scripts/NotificationUser.aspx?Id=12702 and (NBFC-UL/ML) https://rbi.org.in/SCRIPTS/BS_ViewMasDirections.aspx?id=12704
+13. RBI, *Customer Protection – Limiting Liability of Customers in Unauthorised Electronic Banking Transactions*, RBI/2017-18/15, 6 Jul 2017 — https://www.rbi.org.in/scripts/FS_Notification.aspx?Id=11040
+14. CERT-In, *Directions under s.70B(6), IT Act 2000* — mandatory cyber-incident reporting within 6 hours, 28 Apr 2022 — https://www.cert-in.org.in/Directions70B.jsp

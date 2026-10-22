@@ -52,6 +52,7 @@ createHttpAdapter(adapter).listen(8080);
 
 - [Problem statement](docs/problem-statement.md) — the Credit-on-UPI threat model, the 200ms constraint, and why existing fraud stacks miss it
 - [Market opportunity](docs/market-opportunity.md) — UPI scale, CLOU inflection, fraud losses, and why now, with citations
+- [Commercial strategy](docs/commercial-strategy.md) — open-core split, pricing matrix, and SRO alignment
 
 ## Status
 

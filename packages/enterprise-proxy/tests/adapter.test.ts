@@ -1,6 +1,8 @@
 import type { Transaction } from '@vayu/core';
 import { Verdict } from '@vayu/core';
 import { velocitySpike } from '@vayu/telemetry-rules';
+import { complianceHooks } from '../src/compliance';
+import type { IncidentRecord } from '../src/compliance';
 import { VayuAdapter } from '../src/vayuAdapter';
 
 const txn = (overrides: Partial<Transaction>): Transaction => ({
@@ -42,5 +44,19 @@ describe('VayuAdapter', () => {
     adapter.handleTransaction(txn({}));
     // Current window is still open; nothing has rolled into completedWindows yet.
     expect(adapter.billingMeter().completedWindows.length).toBe(0);
+  });
+});
+
+describe('complianceHooks', () => {
+  it('computes CERT-In and FMR deadlines from classification time', () => {
+    const hooks = complianceHooks();
+    const record: IncidentRecord = {
+      txnId: 'txn-1',
+      rule: 'telemetry.mule-drain',
+      verdict: Verdict.Block,
+      atMs: 1_000,
+    };
+    expect(hooks.certInReportDeadlineMs(record)).toBe(1_000 + 6 * 3_600_000);
+    expect(hooks.fmrDeadlineMs(1_000)).toBe(1_000 + 14 * 86_400_000);
   });
 });
