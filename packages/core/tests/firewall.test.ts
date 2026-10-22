@@ -103,3 +103,91 @@ describe('FirewallEngine', () => {
     expect(totalMicros / STREAM).toBeLessThan(5_000); // mean < 5ms per eval
   });
 });
+
+describe('FirewallEngine hardening', () => {
+  it('isolates a throwing rule: evaluation continues, error is recorded', () => {
+    const broken: Rule = {
+      name: 'broken',
+      evaluate: () => {
+        throw new Error('boom');
+      },
+    };
+    const engine = new FirewallEngine([
+      broken,
+      verdictRule('ok.block', Verdict.Block, true),
+    ]);
+    const result = engine.evaluate(txn({}));
+    expect(result.verdict).toBe(Verdict.Block);
+    expect(result.ruleErrors).toEqual([{ rule: 'broken', message: 'boom' }]);
+  });
+
+  it('reports thrown rules through onRuleError', () => {
+    const seen: string[] = [];
+    const broken: Rule = {
+      name: 'broken',
+      evaluate: () => {
+        throw new Error('nope');
+      },
+    };
+    const engine = new FirewallEngine([broken], {
+      onRuleError: (rule) => seen.push(rule),
+    });
+    engine.evaluate(txn({}));
+    expect(seen).toEqual(['broken']);
+  });
+
+  it('returns REVIEW on a malformed transaction instead of a silent ALLOW', () => {
+    const engine = new FirewallEngine([verdictRule('noop', Verdict.Allow, false)]);
+    const result = engine.evaluate(txn({ timestampMs: Number.NaN }));
+    expect(result.verdict).toBe(Verdict.Review);
+    expect(result.ruleErrors[0]?.rule).toBe('engine');
+  });
+
+  it('invokes onEvaluation once per call and survives a throwing sink', () => {
+    let calls = 0;
+    const engine = new FirewallEngine([], {
+      onEvaluation: () => {
+        calls += 1;
+        throw new Error('sink down');
+      },
+    });
+    const result = engine.evaluate(txn({}));
+    expect(result.verdict).toBe(Verdict.Allow);
+    expect(calls).toBe(1);
+    expect(engine.hookErrorCount).toBe(1);
+  });
+
+  it('exports and restores per-rule state for restart warm-up', () => {
+    let n = 0;
+    const stateful: Rule = {
+      name: 'counter',
+      evaluate: () => {
+        n += 1;
+        return n > 3 ? { rule: 'counter', verdict: Verdict.Block, reason: 'burst' } : null;
+      },
+      exportState: () => ({ n }),
+      restoreState: (s: unknown) => {
+        n = (s as { n: number }).n;
+      },
+    };
+    const engine = new FirewallEngine([stateful]);
+    engine.evaluate(txn({}));
+    engine.evaluate(txn({}));
+    const snap = engine.exportState();
+
+    n = 99; // simulate restart wiping state
+    const restored = new FirewallEngine([stateful]);
+    restored.restoreState(snap);
+    restored.evaluate(txn({}));
+    restored.evaluate(txn({})); // n: 2 -> 3 -> 4, blocks on the second eval
+    const third = restored.evaluate(txn({}));
+    expect(third.verdict).toBe(Verdict.Block);
+  });
+
+  it('throws on an unknown snapshot version', () => {
+    const engine = new FirewallEngine([]);
+    expect(() =>
+      engine.restoreState({ version: 99, exportedAtMs: 0, rules: {} } as never),
+    ).toThrow('unsupported snapshot version');
+  });
+});

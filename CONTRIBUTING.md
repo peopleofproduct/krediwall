@@ -37,7 +37,7 @@ npm run bench   # latency benchmark (run on a quiet machine)
 
 ## Writing a rule
 
-Implement the `Rule` interface from `@krediwall/core`. Keep per-entity state in fixed-size structures (`RingBuffer`) behind a capped map (`LruMap`), avoid closures and allocations in `evaluate`, and tolerate out-of-order timestamps without corrupting state.
+Implement the `Rule` interface from `@krediwall/core`. Keep per-entity state in fixed-size structures (`RingBuffer`) behind a capped map (`LruMap`), avoid closures and allocations in `evaluate`, tolerate out-of-order timestamps without corrupting state, never throw from `evaluate` (a throwing rule is isolated by the engine but is degraded coverage), and implement `exportState`/`restoreState` for anything stateful.
 
 ## Licence
 

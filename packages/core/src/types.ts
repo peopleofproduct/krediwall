@@ -47,6 +47,12 @@ export interface RuleHit {
   readonly reason: string;
 }
 
+/** A rule that threw inside `evaluate()`. Recorded and reported, never thrown. */
+export interface RuleError {
+  readonly rule: string;
+  readonly message: string;
+}
+
 /**
  * A synchronous, allocation-frugal heuristic.
  * Implementations keep per-entity state internally and must tolerate
@@ -57,12 +63,26 @@ export interface Rule {
   evaluate(txn: Transaction, ctx: RuleContext): RuleHit | null;
   /** Drop all accumulated state; used between replays and tests. */
   reset?(): void;
+  /**
+   * Serialisable copy of accumulated per-entity state (JSON-safe values
+   * only). Lets a restarted process or warm replica pick up where this
+   * instance left off. Rules that keep no state omit it.
+   */
+  exportState?(): unknown;
+  /** Replace accumulated state from a previous `exportState()` output. */
+  restoreState?(state: unknown): void;
 }
 
 /** The engine's verdict for one transaction plus telemetry about the eval. */
 export interface Evaluation {
   readonly verdict: Verdict;
   readonly hits: readonly RuleHit[];
+  /**
+   * Rules that threw during this evaluation. Their absence from `hits`
+   * means the verdict was computed without them; alert on this field.
+   * Empty when every rule ran cleanly.
+   */
+  readonly ruleErrors: readonly RuleError[];
   /** Wall-clock microseconds spent inside `evaluate`. */
   readonly elapsedMicros: number;
 }

@@ -7,3 +7,9 @@ export {
   mobileFromVpa,
   normalizeMobile,
 } from './feed';
+export { loadFriSnapshotFile, parseFriSnapshot } from './snapshotFile';
+export type {
+  FriSnapshotFile,
+  LoadSnapshotOptions,
+  SnapshotLoadResult,
+} from './snapshotFile';

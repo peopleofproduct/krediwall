@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Verdict } from '@krediwall/core';
 import type { Transaction } from '@krediwall/core';
 import {
@@ -7,6 +10,7 @@ import {
   mobileFromVpa,
   normalizeMobile,
 } from '../src/feed';
+import { loadFriSnapshotFile, parseFriSnapshot } from '../src/snapshotFile';
 
 const txn = (payeeVpa: string): Transaction => ({
   txnId: 'txn-1',
@@ -110,5 +114,70 @@ describe('feedReputationRule', () => {
     expect(
       rule(friEntry('very_high')).evaluate(txn('9123456789@ybl'), { nowMs: 0 }),
     ).toBeNull();
+  });
+});
+
+describe('FRI snapshot file', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'krediwall-snap-'));
+  const snapPath = join(dir, 'fri.json');
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  const write = (doc: unknown) => writeFileSync(snapPath, JSON.stringify(doc));
+
+  it('loads a well-formed snapshot with all three signal forms', () => {
+    write({
+      version: 1,
+      generatedAtMs: 1_000,
+      entries: [
+        { mobile: '9876543210', level: 'very_high' },
+        { mobile: '9123456789', listed: true },
+        { mobile: '9988776655', riskScore: 0.8 },
+      ],
+    });
+    const feed = friFeed('secret-key');
+    const result = loadFriSnapshotFile(feed, snapPath, { nowMs: 2_000 });
+    expect(result.loaded).toBe(3);
+    expect(result.rejected).toBe(0);
+    expect(result.generatedAtMs).toBe(1_000);
+    expect(result.stale).toBe(false);
+    expect(feed.lookup('9876543210')).toEqual({ listed: false, riskScore: 1 });
+    expect(feed.lookup('9123456789')).toEqual({ listed: true, riskScore: 1 });
+    expect(feed.lookup('9988776655')).toEqual({ listed: false, riskScore: 0.8 });
+  });
+
+  it('rejects malformed rows but loads the good ones', () => {
+    write({
+      entries: [
+        { mobile: '9876543210', level: 'high' },
+        { mobile: '9123456789', level: 'bogus' },
+        { mobile: '9988776655' }, // no signal fields
+        { riskScore: 0.9 }, // no mobile
+        'not-an-object',
+      ],
+    });
+    const feed = friFeed('secret-key');
+    const result = loadFriSnapshotFile(feed, snapPath);
+    expect(result.loaded).toBe(1);
+    expect(result.rejected).toBe(4);
+    expect(result.sampleErrors.length).toBeGreaterThan(0);
+  });
+
+  it('flags a stale snapshot when generatedAtMs is older than maxAgeMs', () => {
+    write({ generatedAtMs: 1_000, entries: [{ mobile: '9876543210', level: 'high' }] });
+    const feed = friFeed('secret-key');
+    const result = loadFriSnapshotFile(feed, snapPath, {
+      maxAgeMs: 500,
+      nowMs: 2_000,
+    });
+    expect(result.stale).toBe(true);
+    expect(result.loaded).toBe(1); // still loaded — caller decides policy
+  });
+
+  it('throws on a file that is not a snapshot object', () => {
+    const feed = friFeed('secret-key');
+    expect(() => parseFriSnapshot('{"entries": "nope"}')).toThrow('entries');
+    expect(() => parseFriSnapshot('not json')).toThrow('not valid JSON');
+    writeFileSync(snapPath, '42');
+    expect(() => loadFriSnapshotFile(feed, snapPath)).toThrow('entries');
   });
 });

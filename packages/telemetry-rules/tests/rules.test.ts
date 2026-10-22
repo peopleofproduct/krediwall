@@ -262,3 +262,140 @@ describe('muleDrain', () => {
     expect(staleHit?.verdict).toBe(Verdict.Review);
   });
 });
+
+describe('state serialization', () => {
+  it('round-trips a ring buffer oldest-first', () => {
+    const ring = new RingBuffer(3);
+    for (let i = 0; i < 5; i++) ring.push(i, i * 10);
+    const clone = new RingBuffer(3);
+    clone.loadEntries(ring.toEntries());
+    expect(clone.toEntries()).toEqual(ring.toEntries());
+    expect(clone.auxAt(0)).toBe(ring.auxAt(0));
+  });
+
+  it('preserves LRU recency order through serialization', () => {
+    const map = new LruMap<string, number>(3);
+    map.set('a', 1);
+    map.set('b', 2);
+    map.set('c', 3);
+    map.get('a'); // a most recent; b is LRU
+    const clone = new LruMap<string, number>(3);
+    for (const [k, v] of map.entriesLeastRecentFirst()) clone.set(k, v);
+    clone.set('d', 4); // must evict b, same as the original would
+    expect(clone.get('b')).toBeUndefined();
+    expect(clone.get('a')).toBe(1);
+    expect(clone.get('c')).toBe(3);
+    expect(clone.get('d')).toBe(4);
+  });
+
+  it('preserves velocity-spike verdicts across export/restore', () => {
+    const opts = { maxDistinctMerchants: 2, windowMs: 60_000 };
+    const live = velocitySpike(opts);
+    live.evaluate(txn({ payeeVpa: 'm1@paytm' }), { nowMs: T0 });
+    live.evaluate(txn({ payeeVpa: 'm2@paytm', timestampMs: T0 + 1_000 }), {
+      nowMs: T0 + 1_000,
+    });
+
+    const restored = velocitySpike(opts);
+    restored.restoreState!(live.exportState!());
+    // Third distinct payee pushes past the limit only because history survived.
+    const hit = restored.evaluate(
+      txn({ payeeVpa: 'm3@paytm', timestampMs: T0 + 2_000 }),
+      { nowMs: T0 + 2_000 },
+    );
+    expect(hit?.verdict).toBe(Verdict.Block);
+  });
+
+  it('preserves mule-drain state across export/restore', () => {
+    const opts = {
+      limitBurnRatio: 0.9,
+      windowMs: 60_000,
+      ticketFloorPaise: 45_000_00,
+      ticketCeilPaise: 50_000_00,
+      minRepeats: 2,
+    };
+    const unverified = { terminalVerified: false, amountPaise: 49_999_00 };
+    const live = muleDrain(opts);
+    live.evaluate(txn({ ...unverified }), { nowMs: T0 });
+
+    const restored = muleDrain(opts);
+    restored.restoreState!(live.exportState!());
+    const hit = restored.evaluate(
+      txn({ ...unverified, timestampMs: T0 + 5_000 }),
+      { nowMs: T0 + 5_000 },
+    );
+    expect(hit?.verdict).toBe(Verdict.Block);
+  });
+
+  it('rejects a malformed snapshot', () => {
+    const rule = muleDrain({
+      limitBurnRatio: 0.9,
+      windowMs: 60_000,
+      ticketFloorPaise: 45_000_00,
+      ticketCeilPaise: 50_000_00,
+      minRepeats: 2,
+    });
+    expect(() => rule.restoreState!({ not: 'an array' })).toThrow('bad snapshot');
+  });
+});
+
+describe('adversarial streams', () => {
+  it('tolerates out-of-order timestamps without corrupting state', () => {
+    const ring = new RingBuffer(8);
+    ring.push(1_000, 1);
+    ring.push(500, 2); // earlier timestamp inserted after a newer one
+    ring.push(1_200, 3);
+    // Window walk may under-count (a stale entry hides what sits behind it),
+    // but must never read out of bounds or misbehave.
+    const n = ring.countWithin(10_000, 1_200);
+    expect(n).toBeGreaterThanOrEqual(0);
+    expect(n).toBeLessThanOrEqual(3);
+    expect(ring.length).toBe(3);
+  });
+
+  it('survives a 10k-transaction fuzz stream with jittered clocks', () => {
+    const velocity = velocitySpike({
+      maxDistinctMerchants: 4,
+      maxDistinctGeoCells: 3,
+      windowMs: 60_000,
+    });
+    const drain = muleDrain({
+      limitBurnRatio: 0.9,
+      windowMs: 60_000,
+      ticketFloorPaise: 45_000_00,
+      ticketCeilPaise: 50_000_00,
+      minRepeats: 2,
+      maxTrackedLines: 100,
+    });
+    let seed = 0x12345678;
+    const rand = () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const verdicts = new Set<Verdict>();
+    let now = T0;
+    for (let i = 0; i < 10_000; i++) {
+      // Mostly increasing clock with occasional backward jitter, as in a
+      // replicated or multi-switch feed.
+      now += ((rand() * 3) | 0) - (rand() < 0.05 ? 5_000 : 0);
+      const t = txn({
+        txnId: `fz-${i}`,
+        creditLineId: `line-${(rand() * 200) | 0}`,
+        payeeVpa: `p${(rand() * 500) | 0}@ybl`,
+        amountPaise: ((rand() * 60_000) | 0) * 100,
+        timestampMs: now,
+        terminalVerified: rand() < 0.9,
+        geoCell: ['blr', 'mum', 'del'][(rand() * 3) | 0],
+        creditLineApprovedAtMs: now - ((rand() * 86_400_000) | 0),
+      });
+      expect(() => velocity.evaluate(t, { nowMs: now })).not.toThrow();
+      const hit = drain.evaluate(t, { nowMs: now });
+      if (hit !== null) verdicts.add(hit.verdict);
+    }
+    for (const v of verdicts) {
+      expect([Verdict.Block, Verdict.Review]).toContain(v);
+    }
+  });
+});

@@ -1,5 +1,6 @@
-import type { Evaluation, Rule, Transaction } from '@krediwall/core';
+import type { Evaluation, FirewallEngineOptions, Rule, Transaction } from '@krediwall/core';
 import { FirewallEngine } from '@krediwall/core';
+import type { GraphEvaluator, GraphQuery, GraphSignal } from './graph';
 
 /** Throughput accounting for the commercial billing hook. */
 export interface MeterWindow {
@@ -36,26 +37,36 @@ export class BillingMeter {
   }
 }
 
-/** Stub hook result for the future multi-hop mule-ring graph check. */
-export interface GraphVerdict {
-  readonly muleRingScore: number;
-  readonly checked: boolean;
-}
+/** @deprecated Use `GraphSignal` from `./graph`; kept for one release. */
+export type GraphVerdict = GraphSignal;
 
-const UNCHECKED: GraphVerdict = { muleRingScore: 0, checked: false };
+const UNCHECKED: GraphSignal = { muleRingScore: 0, checked: false };
+
+export interface KrediwallAdapterOptions {
+  /**
+   * Optional commercial graph evaluator; when present, authorisations are
+   * also scored against the recipient mule-ring graph.
+   */
+  readonly graph?: GraphEvaluator;
+  /** Passed through to the `FirewallEngine` (audit hook, error hook). */
+  readonly engine?: FirewallEngineOptions;
+}
 
 /**
  * Framework-neutral adapter sitting in the payment-processor switch
  * pipeline. `handleTransaction` is the synchronous hot path — verdict in,
- * verdict out. Commercial hooks are explicit seams the open-core build
- * leaves stubbed.
+ * verdict out. Commercial hooks are explicit seams: supply a
+ * `GraphEvaluator` to switch the stub off; the billing meter feeds the
+ * usage-based commercial tier.
  */
 export class KrediwallAdapter {
   private readonly engine: FirewallEngine;
+  private readonly graph: GraphEvaluator | undefined;
   private readonly meter = new BillingMeter();
 
-  constructor(rules: readonly Rule[]) {
-    this.engine = new FirewallEngine(rules);
+  constructor(rules: readonly Rule[], options?: KrediwallAdapterOptions) {
+    this.engine = new FirewallEngine(rules, options?.engine);
+    this.graph = options?.graph;
   }
 
   handleTransaction(txn: Transaction): Evaluation {
@@ -64,15 +75,27 @@ export class KrediwallAdapter {
   }
 
   /**
-   * Paid-tier hook: intercept routing and score the recipient VPA against
-   * multi-hop mule-ring graphs. Stubbed in the open-core build.
+   * Recipient-VPA mule-ring check. Delegates to the configured
+   * `GraphEvaluator`; returns `checked: false` when none is wired in —
+   * callers must treat that as "no coverage", not "clean".
    */
-  evaluateGraphNetwork(_payeeVpa: string): Promise<GraphVerdict> {
-    return Promise.resolve(UNCHECKED);
+  evaluateGraphNetwork(query: GraphQuery): Promise<GraphSignal> {
+    return this.graph === undefined
+      ? Promise.resolve(UNCHECKED)
+      : this.graph.evaluate(query);
   }
 
   /** Paid-tier hook: transactional throughput metering per µs window. */
   billingMeter(): BillingMeter {
     return this.meter;
+  }
+
+  /** Engine state for restart warm-up / replica seeding. */
+  exportState() {
+    return this.engine.exportState();
+  }
+
+  restoreState(snapshot: Parameters<FirewallEngine['restoreState']>[0]): void {
+    this.engine.restoreState(snapshot);
   }
 }
