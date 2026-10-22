@@ -27,6 +27,8 @@ versions may break APIs until a 1.0 is cut.
   identifiers (namespaced digests, matched via `feed.lookupVpa`) and
   `feedReputationRule` accepts a `resolveMobile` seam so an integrator's
   merchant registry can map handles to mobiles.
+- `examples/translate-dip-export.mjs` — converts common DIP export shapes
+  (CSV, JSON array, NDJSON) into the strict snapshot format.
 
 ## 0.1.0 — first tagged state
 

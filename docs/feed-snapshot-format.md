@@ -65,6 +65,10 @@ const result = loadFriSnapshotFile(feed, '/var/feeds/fri-latest.json', {
   and the file.
 - If your DIP feed is mobile-keyed CSV rather than JSON, translate upstream
   and emit this format; keep the adapter thin.
+  `examples/translate-dip-export.mjs` is a ready template — it reads CSV,
+  JSON arrays and NDJSON, guesses common column names, normalises
+  identifiers and emits this format (including `vpa` rows and the
+  listed-by-default convention for bare identifier lists).
 - Phone-number VPAs match mobile rows directly. For `merchant@paytm`-style
   handles there are two routes: wire `resolveMobile` (your merchant
   registry — every onboarded merchant has a mobile on file) into
