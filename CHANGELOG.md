@@ -52,6 +52,25 @@ versions may break APIs until a 1.0 is cut.
   catch rate, false-positive rate and latency — the harness for calibrating
   thresholds against real traffic. Sample fixture:
   `examples/fixtures/replay-sample.jsonl`.
+- **Gateway hardening** — optional bearer auth (`KREDIWALL_API_KEY`,
+  constant-time compare, probes stay open), strict transport validation
+  of all eight required fields with the offending field named in the 400,
+  and an `x-request-id` header echoed/generated on every response.
+- **`docs/api/openapi.yaml`** — the full OpenAPI 3.1 contract for
+  `/v1/evaluate`, `/healthz`, `/readyz` and `/metrics`; import it into
+  API gateways, Postman or client codegen.
+- **Decision trail** — `KREDIWALL_DECISION_LOG` appends one JSON line per
+  evaluation (verdict, evidence, latency) via a buffered stream;
+  `tools/decisions-report.mjs` turns a log into a review summary.
+- **`deploy/`** — `Dockerfile` (multi-stage, non-root), docker-compose
+  with Prometheus + Grafana auto-provisioned, a `k8s.yaml` reference
+  (liveness/readiness probes wired), a Grafana dashboard JSON and a
+  Prometheus alert pack (rule errors, dropped audit records, latency
+  budget, evictions, BLOCK-rate anomaly).
+- **Publishing path** — per-package `prepublishOnly` compile guards,
+  root `npm run publish:check` (pack dry-run) and `docs/publishing.md`
+  (version-synced releases, provenance guidance, post-publish
+  verification).
 
 ## 0.1.0 — first tagged state
 

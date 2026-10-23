@@ -1,0 +1,85 @@
+# Krediwall on Kubernetes — reference shape, not a turnkey chart.
+#
+#   kubectl apply -f deploy/k8s.yaml
+#
+# Liveness → /healthz (process up), readiness → /readyz (feed fresh,
+# state restored — holds traffic from the Service until usable).
+# emptyDir keeps the example self-contained; swap for a PVC in production
+# so state and the decision log survive pod restarts.
+#
+# secrets: the example ships a placeholder Secret so the manifest applies.
+# Replace with your secret manager (external-secrets, sealed-secrets…).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: krediwall
+  labels:
+    app.kubernetes.io/name: krediwall
+stringData:
+  apiKey: change-me-krediwall-api-key
+  friHmacKey: change-me-fri-hmac-key
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: krediwall-gateway
+  labels:
+    app.kubernetes.io/name: krediwall
+spec:
+  replicas: 2 # stateless replicas; warm-up cost is bounded (see integration guide)
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: krediwall
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: krediwall
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: gateway
+          image: krediwall:local # build from deploy/Dockerfile, push to your registry
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KREDIWALL_API_KEY
+              valueFrom: { secretKeyRef: { name: krediwall, key: apiKey } }
+            - name: KREDIWALL_STATE_FILE
+              value: /var/lib/krediwall/state.json
+            - name: KREDIWALL_DECISION_LOG
+              value: /var/lib/krediwall/decisions.jsonl
+            # - name: KREDIWALL_FRI_SNAPSHOT
+            #   value: /etc/krediwall/fri-latest.json
+            # - name: KREDIWALL_FRI_HMAC_KEY
+            #   valueFrom: { secretKeyRef: { name: krediwall, key: friHmacKey } }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/krediwall }
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { memory: 2Gi } # no CPU limit: avoid throttling the hot path
+      volumes:
+        - name: data
+          emptyDir: {} # → PVC in production
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: krediwall-gateway
+  labels:
+    app.kubernetes.io/name: krediwall
+spec:
+  selector:
+    app.kubernetes.io/name: krediwall
+  ports:
+    - port: 8080
+      targetPort: 8080

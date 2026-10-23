@@ -9,6 +9,7 @@ Terms used across the Krediwall docs and code, in alphabetical order.
 | **CERT-In** | Indian Computer Emergency Response Team. Its 28 Apr 2022 directions require cyber incidents to be reported within 6 hours of notice. |
 | **Chakshu** | A DoT facility on the Sanchar Saathi portal for citizens to report suspected fraud *communications* (calls, SMS, WhatsApp). It is an input to FRI and is not a channel for reporting financial-fraud losses. |
 | **CLOU** | Credit Line on UPI: a pre-sanctioned bank credit line linked to UPI as a funding account (RBI circular of 4 Sep 2023). |
+| **Decision log** | The JSONL record of every evaluation (verdict, hits, evidence, latency) the reference gateway writes via `KREDIWALL_DECISION_LOG` — the raw material for review queues and FMR filings. |
 | **Dedupe** | Engine option (`dedupeCapacity`) that returns the original `Evaluation` for a repeated `txnId`, so a switch retry cannot double-count rule state. |
 | **DIP** | Digital Intelligence Platform: DoT's platform for sharing telecom-misuse and fraud intelligence with onboarded stakeholders such as banks, UPI service providers, telecom operators and law enforcement. |
 | **DPI** | Digital Public Infrastructure — India's public digital rails. In this repo it does **not** mean deep packet inspection. |

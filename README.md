@@ -46,6 +46,43 @@ npm run demo
             100.0% of limit burned via 2 repeat band tickets to unverified terminal  (23 µs)
 ```
 
+## Run it as a service in 30 seconds
+
+```bash
+npm run build
+node examples/reference-gateway.mjs          # http://localhost:8080
+```
+
+```bash
+curl -s http://localhost:8080/v1/evaluate \
+  -H 'content-type: application/json' \
+  -H 'authorization: Bearer demo-key' \
+  -d '{ "txnId":"t-1", "creditLineId":"line-42", "payerVpa":"user@okbank",
+        "payeeVpa":"pos1@ybl", "amountPaise":4999900, "creditLimitPaise":10000000,
+        "timestampMs":1760000000000, "terminalVerified":false }'
+```
+
+```jsonc
+{ "verdict": "BLOCK", "degraded": false, "elapsedMicros": 23.4,
+  "hits": [ { "rule": "telemetry.mule-drain", "verdict": "BLOCK",
+              "reason": "100.0% of limit burned via 2 repeat band tickets…",
+              "evidence": { "burnRatio": 1, "repeats": 2, "unverifiedTerminal": 1 } } ],
+  "ruleErrors": [] }
+```
+
+The gateway is configured by environment variables (rules JSON, FRI feed,
+state file, decision log, bearer key) and serves `/healthz`, `/readyz` and
+Prometheus `/metrics`. **The full API contract is `docs/api/openapi.yaml`** —
+import it into Postman, your API gateway, or client codegen.
+
+Or bring the whole stack — gateway + Prometheus + a pre-wired Grafana
+dashboard with alerts — up in one command:
+
+```bash
+docker compose -f deploy/docker-compose.yml up --build
+# gateway :8080 (Bearer demo-krediwall-token) · Grafana :3000 (dashboard auto-loads)
+```
+
 ## How a verdict is produced
 
 ```
@@ -94,6 +131,9 @@ examples/demo.mjs       npm run demo
 examples/reference-gateway.mjs   npm run gateway — a complete deployment you can copy
 examples/translate-dip-export.mjs  DIP export → feed snapshot translator template
 tools/replay.mjs        npm run replay    replay a labelled stream, report catch rate / FP / latency
+tools/decisions-report.mjs  summary of a decision log for review teams
+deploy/                 Dockerfile · docker-compose (gateway+Prometheus+Grafana) · k8s manifest · dashboard + alerts
+docs/api/openapi.yaml   the HTTP contract, importable into Postman/gateways/codegen
 benchmarks/run.mjs      npm run bench     latency measurement
 benchmarks/soak.mjs     npm run soak      sustained-load boundedness check
 ```
@@ -132,9 +172,11 @@ createHttpAdapter(adapter).listen(8080);
 - [Executive summary](docs/executive-summary.md) — one page for risk, fraud and product leads
 - [Problem statement](docs/problem-statement.md) — the threat model and why credit-funded UPI is different
 - [Integration guide](docs/integration-guide.md) — production deployment, restarts, HA, feeds and limits
+- [API contract](docs/api/openapi.yaml) — OpenAPI 3.1 for all gateway endpoints
 - [Feed snapshot format](docs/feed-snapshot-format.md) — the FRI/DIP JSON file the loader accepts
 - [Market opportunity](docs/market-opportunity.md) — volumes, fraud data and timing, with citations
 - [Commercial strategy](docs/commercial-strategy.md) — open-core split and pricing
+- [Publishing](docs/publishing.md) — how `@krediwall/*` reaches npm
 - [Glossary](docs/glossary.md) — CLOU, VPA, PSP, TPAP, FRI, DIP, EWS, FMR and more
 
 ## Project

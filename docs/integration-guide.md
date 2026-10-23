@@ -50,6 +50,59 @@ or 503 with `{ ready: false, problems: [...] }` from an optional
 orchestrators hold traffic until the instance is actually usable.
 `/healthz` only says the process is alive.
 
+### Auth and the transport contract
+
+- **Set `KREDIWALL_API_KEY`** and `/v1/evaluate` + `/metrics` require
+  `Authorization: Bearer <key>` (constant-time compare; `/healthz` and
+  `/readyz` stay open so orchestrator probes always get through). Without
+  it the gateway is open — fine inside a locked-down network, but bank
+  deployments should front it with mTLS or a service mesh anyway; that is
+  infrastructure, not this service.
+- **Every response carries `x-request-id`** — echoed when you send one,
+  generated when you don't. Thread your switch's correlation id through
+  and verdicts join your distributed trace.
+- **Transport validation is strict on purpose.** The eight required
+  fields must arrive with the right shape (strings, safe integers in
+  paise, boolean) or the gateway answers 400 naming the offending field.
+  Well-formed-but-semantically-odd payloads are *not* rejected — they
+  flow to the engine, which answers REVIEW with `degraded: true` so the
+  audit trail records them. The contract is `docs/api/openapi.yaml`;
+  import it into your API gateway, Postman or client codegen.
+
+### The decision trail
+
+Set `KREDIWALL_DECISION_LOG=/var/lib/krediwall/decisions.jsonl` and the
+gateway appends one JSON line per evaluation — verdict, hits with their
+structured `evidence`, latency, degraded flag — via a buffered stream
+that never blocks the hot path. This is the record your review queue and
+FMR defence are built from; it contains raw identifiers, so it stays
+inside your perimeter. Summarise it with
+`node tools/decisions-report.mjs --input=decisions.jsonl` (verdict mix,
+per-rule firings, latency, degraded rows, top blocked payees) or feed
+the same file to your case-management system.
+
+### Deploying and watching it
+
+`deploy/` ships the whole picture:
+
+- **`Dockerfile`** — multi-stage, non-root, `/healthz` HEALTHCHECK.
+- **`docker-compose.yml`** — gateway + Prometheus + Grafana in one
+  command; the dashboard and alert pack auto-load (`deploy/grafana`,
+  `deploy/prometheus`).
+- **`k8s.yaml`** — Deployment + Service with `/healthz` liveness and
+  `/readyz` readiness, non-root security context, no CPU limit (don't
+  throttle the hot path), emptyDir volumes marked where a PVC goes.
+- **`grafana/dashboards/krediwall.json`** — verdict mix, per-rule
+  firings, latency histogram against the 5 ms budget, rule/hook errors,
+  dedupe, tracked-line caps and evictions.
+- **`prometheus/alerts.yml`** — rule errors, dropped audit records,
+  latency budget breaches, line evictions, no-traffic, high BLOCK rate.
+
+For production, prefer publishing the packages
+(`docs/publishing.md`) and installing them into *your* service rather
+than running the reference gateway as-is — the library path is the
+intended integration; the gateway is the demo and the fallback.
+
 ### Tuning thresholds without a deploy
 
 `loadRulesConfigFile(path)` (in `@krediwall/telemetry-rules`) builds the

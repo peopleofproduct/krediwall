@@ -1,0 +1,13 @@
+# Prometheus scrape config for the reference deployment. The demo token
+# below must match KREDIWALL_API_KEY in docker-compose.yml — in production
+# read both from your secret store instead of a file.
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: krediwall
+    authorization:
+      type: Bearer
+      credentials: demo-krediwall-token
+    static_configs:
+      - targets: ['krediwall-gateway:8080']

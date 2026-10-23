@@ -1,0 +1,123 @@
+{
+  "uid": "krediwall-overview",
+  "title": "Krediwall — firewall overview",
+  "description": "Verdicts, rules, latency and state health for the Krediwall Credit-on-UPI fraud firewall. Import-ready; pairs with deploy/prometheus/alerts.yml.",
+  "schemaVersion": 39,
+  "version": 1,
+  "tags": ["krediwall", "fraud", "upi"],
+  "time": { "from": "now-3h", "to": "now" },
+  "refresh": "30s",
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Evaluations / s",
+      "description": "Authorizations flowing through the engine.",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "krediwall-prometheus" },
+      "targets": [{ "expr": "sum(rate(krediwall_evaluations_total[5m]))", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "BLOCK share",
+      "description": "Blocked fraction of all evaluations. A sustained jump usually means thresholds need recalibration (npm run replay).",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "krediwall-prometheus" },
+      "targets": [{ "expr": "100 * sum(rate(krediwall_verdict_total{verdict=\"BLOCK\"}[15m])) / clamp_min(sum(rate(krediwall_evaluations_total[15m])), 0.001)", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 5 }, { "color": "red", "value": 10 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Rule errors (1h)",
+      "description": "Non-zero = a rule is throwing and every verdict in that window was degraded. Critical.",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "krediwall-prometheus" },
+      "targets": [{ "expr": "sum(increase(krediwall_rule_error_total[1h]))", "refId": "A" }],
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Dropped audit records (1h)",
+      "description": "onEvaluation hook throws — those decisions never reached the audit sink. Critical.",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "krediwall-prometheus" },
+      "targets": [{ "expr": "sum(increase(krediwall_hook_errors_total[1h]))", "refId": "A" }],
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Deduped retries (1h)",
+      "description": "Switch retries answered from the dedupe cache — state did not double-count.",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "krediwall-prometheus" },
+      "targets": [{ "expr": "sum(increase(krediwall_deduped_total[1h]))", "refId": "A" }],
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [] }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Evicted lines (1h)",
+      "description": "Lines dropped from rule history because maxTrackedLines is too small — raise the cap when this climbs.",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "krediwall-prometheus" },
+      "targets": [{ "expr": "sum(increase(krediwall_rule_stat_evictedLines[1h]))", "refId": "A" }],
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 10000 }, { "color": "red", "value": 100000 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Verdicts / s",
+      "description": "ALLOW should dominate; a REVIEW/BLOCK jump means either an attack pattern or over-tight thresholds.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "krediwall-prometheus" },
+      "targets": [
+        { "expr": "sum(rate(krediwall_verdict_total{verdict=\"ALLOW\"}[5m]))", "legendFormat": "ALLOW", "refId": "A" },
+        { "expr": "sum(rate(krediwall_verdict_total{verdict=\"REVIEW\"}[5m]))", "legendFormat": "REVIEW", "refId": "B" },
+        { "expr": "sum(rate(krediwall_verdict_total{verdict=\"BLOCK\"}[5m]))", "legendFormat": "BLOCK", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Evaluation latency (µs)",
+      "description": "Engine hot-path time. The 5ms budget line is the engineering target for the in-process check.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "krediwall-prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum by (le) (rate(krediwall_eval_latency_micros_bucket[5m])))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.99, sum by (le) (rate(krediwall_eval_latency_micros_bucket[5m])))", "legendFormat": "p99", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "µs", "custom": { "thresholdsStyle": { "mode": "line" } }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 5000 } ] } }, "overrides": [] }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Rule firings / s",
+      "description": "Which rules are firing. A rule that never fires may be calibrated too loose; one that fires constantly, too tight.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "krediwall-prometheus" },
+      "targets": [{ "expr": "sum by (rule) (rate(krediwall_rule_hit_total[5m]))", "legendFormat": "{{rule}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 0 } }, "overrides": [] }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Tracked lines per rule",
+      "description": "Bounded state health. Lines pinned at maxTrackedLines with eviction climbing means raise the cap.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "krediwall-prometheus" },
+      "targets": [
+        { "expr": "krediwall_rule_stat_trackedLines", "legendFormat": "{{rule}} tracked", "refId": "A" },
+        { "expr": "krediwall_rule_stat_maxTrackedLines", "legendFormat": "{{rule}} cap", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    }
+  ]
+}

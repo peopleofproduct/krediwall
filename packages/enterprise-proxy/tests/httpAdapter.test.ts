@@ -115,4 +115,96 @@ describe('httpAdapter', () => {
     const res = await fetch(`${base}/nope`);
     expect(res.status).toBe(404);
   });
+
+  it('echoes x-request-id when the caller sends one, generates one otherwise', async () => {
+    const res = await fetch(`${base}/healthz`, {
+      headers: { 'x-request-id': 'switch-abc-123' },
+    });
+    expect(res.headers.get('x-request-id')).toBe('switch-abc-123');
+    const res2 = await fetch(`${base}/healthz`);
+    const generated = res2.headers.get('x-request-id');
+    expect(generated).toBeTruthy();
+    expect(generated).not.toBe('switch-abc-123');
+  });
+
+  it('names the offending field on a malformed transaction', async () => {
+    const res = await fetch(`${base}/v1/evaluate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...TXN, creditLineId: 12345 }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string; field: string; detail: string };
+    expect(body.error).toBe('malformed transaction');
+    expect(body.field).toBe('creditLineId');
+    expect(body.detail).toContain('non-empty string');
+  });
+
+  it('rejects non-integer and negative paise at the transport layer', async () => {
+    for (const bad of [100.5, -1, '10000']) {
+      const res = await fetch(`${base}/v1/evaluate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...TXN, amountPaise: bad }),
+      });
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { field: string };
+      expect(body.field).toBe('amountPaise');
+    }
+  });
+
+  it('reports a missing field distinctly from a mistyped one', async () => {
+    const res = await fetch(`${base}/v1/evaluate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ txnId: 't-1' }),
+    });
+    const body = (await res.json()) as { detail: string };
+    expect(body.detail).toContain('is missing');
+  });
+
+  it('requires bearer auth on evaluate and metrics when an API key is set', async () => {
+    const authServer = createHttpAdapter(new KrediwallAdapter([]), { apiKey: 'secret-token' });
+    await new Promise<void>((resolve) => authServer.listen(0, '127.0.0.1', resolve));
+    const { port } = authServer.address() as AddressInfo;
+    const authBase = `http://127.0.0.1:${port}`;
+    try {
+      const noAuth = await fetch(`${authBase}/v1/evaluate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(TXN),
+      });
+      expect(noAuth.status).toBe(401);
+      expect(noAuth.headers.get('www-authenticate')).toBe('Bearer');
+
+      const wrongAuth = await fetch(`${authBase}/v1/evaluate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer wrong' },
+        body: JSON.stringify(TXN),
+      });
+      expect(wrongAuth.status).toBe(401);
+
+      const good = await fetch(`${authBase}/v1/evaluate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer secret-token' },
+        body: JSON.stringify(TXN),
+      });
+      expect(good.status).toBe(200);
+
+      const metricsBlocked = await fetch(`${authBase}/metrics`);
+      expect(metricsBlocked.status).toBe(401);
+      const metricsOk = await fetch(`${authBase}/metrics`, {
+        headers: { authorization: 'Bearer secret-token' },
+      });
+      expect(metricsOk.status).toBe(200);
+
+      // Probes stay open for orchestrators.
+      expect((await fetch(`${authBase}/healthz`)).status).toBe(200);
+      expect((await fetch(`${authBase}/readyz`)).status).toBe(200);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        authServer.close((err) => (err ? reject(err) : resolve())),
+      );
+    }
+  });
 });

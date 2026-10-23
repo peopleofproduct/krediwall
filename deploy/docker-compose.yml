@@ -1,0 +1,68 @@
+# Krediwall try-it-now stack: gateway + Prometheus + Grafana, one command.
+#
+#   docker compose -f deploy/docker-compose.yml up --build
+#
+#   gateway   http://localhost:8080  (Bearer demo-krediwall-token)
+#   grafana   http://localhost:3000  (anonymous view; admin/admin to edit)
+#
+# The dashboard and alerts auto-load — no manual Grafana setup. This is a
+# demo posture: a fixed token in a file, anonymous Grafana, emptyDir state.
+# For production: read the key from a secret store, put Grafana behind SSO,
+# and mount real volumes (or use deploy/k8s.yaml).
+
+services:
+  krediwall-gateway:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: krediwall:local
+    environment:
+      KREDIWALL_API_KEY: demo-krediwall-token # must match deploy/prometheus/prometheus.yml
+      KREDIWALL_STATE_FILE: /var/lib/krediwall/state.json
+      KREDIWALL_DECISION_LOG: /var/lib/krediwall/decisions.jsonl
+      # KREDIWALL_RULES_CONFIG: /etc/krediwall/rules.json
+      # KREDIWALL_FRI_SNAPSHOT: /etc/krediwall/fri-latest.json
+      # KREDIWALL_FRI_HMAC_KEY: change-me
+    ports:
+      - '8080:8080'
+    volumes:
+      - krediwall-data:/var/lib/krediwall
+    # volumes:                                      # mount configs when enabling the commented env vars
+    #   - ./rules.json:/etc/krediwall/rules.json:ro
+    #   - ./fri-latest.json:/etc/krediwall/fri-latest.json:ro
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:8080/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  krediwall-prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - '9090:9090'
+
+  krediwall-grafana:
+    image: grafana/grafana:11.5.2
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/krediwall.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - '3000:3000'
+    depends_on:
+      - krediwall-prometheus
+
+volumes:
+  krediwall-data:
+  prometheus-data:
+  grafana-data:
