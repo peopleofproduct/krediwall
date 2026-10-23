@@ -24,20 +24,26 @@ intelligence layer above single-transaction heuristics — graph scoring of
 recipient rings, jurisdiction-grade audit trails, managed compliance
 reporting, and a vendor accountable for them.
 
-## 2. Pricing matrix (working hypothesis)
+## 2. Pricing model (working hypothesis)
+
+Tier structure is public; specific figures are priced on engagement and
+deliberately not published — published ceilings anchor customer
+negotiations to our maximum, not our value.
 
 | Tier | Target client | Mechanics |
 |---|---|---|
 | **Open-Core Engine** | Early-stage fintech apps and indie developers | **₹0 (Apache-2.0).** In-process eval loop, starter rules, open adapters. |
-| **Managed Transit (hosted)** | High-volume digital NBFCs, neo-lenders and the PSP/TPAP apps that front them | **Utility transaction fee.** ₹0.05–₹0.15 per routed evaluation, capped dynamically on monthly volume commits. |
-| **On-Prem Vault** | Scheduled commercial banks and large lenders | **Flat enterprise licence.** ₹12L–₹45L per year per air-gapped node cluster, incl. managed updates and audit guarantees. |
+| **Managed Transit (hosted)** | High-volume digital NBFCs, neo-lenders and the PSP/TPAP apps that front them | **Utility transaction fee.** Paise-per-routed-evaluation, capped dynamically on monthly volume commits. |
+| **On-Prem Vault** | Scheduled commercial banks and large lenders | **Flat enterprise licence.** Per air-gapped node cluster, incl. managed updates and audit guarantees. |
 
 Larger lenders usually already run an enterprise fraud suite, so the on-prem
 tier is positioned as a **complementary pre-authorisation sidecar** carrying
 credit-line context, not as a replacement for that suite.
 
-*Value check.* At ₹0.10 per evaluation, preventing one full ₹60,000 limit drain
-covers about 6 lakh evaluations; at ₹0.15, about 4 lakh.
+The economic rationale in one line: at a paise-level per-evaluation fee,
+preventing a single full credit-line drain covers hundreds of thousands
+of evaluations — the fee is a rounding error next to the fraud loss it
+prevents.
 
 *Terminology.* "PSP" is a UPI Payment Service Provider (the sponsor bank) and
 "TPAP" a Third-Party Application Provider (a UPI app). We avoid "TSP": in the
@@ -106,6 +112,37 @@ deadlines so commercial reporters can slot in without API changes.
 - The on-prem tier exists because lenders with air-gapped infrastructure
   cannot adopt hosted services; what they pay for is determinism, audit and
   accountability.
+
+## 7. Adoption and attribution
+
+Attribution is mutual, opt-in and tiered — never automatic. Using the
+software does not transfer brand or logo rights (trademark law plus
+Apache-2.0 symmetry forbid it), and the open licence carries no
+reporting obligation. Three lanes:
+
+1. **Passive (built into Apache-2.0).** §4(d) requires NOTICE-file
+   reproduction in derivative distributions — "uses Krediwall" carries
+   into their artifacts with zero rights over their brand.
+2. **Voluntary (open tier).** [ADOPTERS.md](../ADOPTERS.md): adopters
+   self-register at a disclosure level they choose — name only, name +
+   logo, or case study — revocable at any time. The
+   [brand kit](brand-kit.md) licences the **"Secured by Krediwall"**
+   badge to adopters running the engine in production, with an
+   opt-in press-reference checkbox for mutual marketing.
+3. **Contractual (paid tiers).** Managed Transit and On-Prem Vault
+   agreements carry what open licences cannot: quarterly usage
+   reporting, mutual logo/press rights with joint disclosure review
+   and 30-day revocability, named-reference and case-study rights with
+   pre-approval, and the **Krediwall Verified Deployment**
+   certification (a paid deliverable they can cite in their own
+   compliance marketing). An opt-in, anonymized benchmark feed from
+   partners powers an annual public "State of Credit-on-UPI Fraud"
+   report — market authority that also compounds the data moat.
+
+What we deliberately do not do: telemetry or phone-home adoption
+tracking. The engine logs nothing and makes no outbound calls
+(see [SECURITY.md](../SECURITY.md)); for banks, that silence is part of
+the product. Adoption visibility comes from the three lanes above.
 
 ---
 

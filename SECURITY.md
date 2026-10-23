@@ -16,7 +16,9 @@ We aim to acknowledge reports within 72 hours and will coordinate disclosure wit
 
 ## Supported versions
 
-The project is alpha and unpublished. Only the `main` branch is supported.
+The project is alpha. Published npm versions (see the badges on the
+README) and the `main` branch are supported; report the affected
+version or commit with your report.
 
 ## What the design does and does not guarantee
 

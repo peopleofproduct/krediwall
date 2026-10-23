@@ -19,6 +19,29 @@ The Apache License 2.0 under which the code is released covers the **code**. As 
 
 A fork should pick its own name.
 
+## "Secured by Krediwall" badge programme
+
+The rules above restrict *unsolicited* uses of these names. The
+[brand kit](docs/brand-kit.md) grants one specific, licensed exception:
+an organisation actually running the Krediwall engine in production
+for the stated scope may display the **"Secured by Krediwall" badge**
+on its security, trust or compliance pages under the brand kit's usage
+guidelines. The badge licence:
+
+- is personal to that organisation, scoped to the deployment it
+  describes, and ends when the deployment does;
+- does not imply endorsement, partnership or certification beyond
+  what the badge text says;
+- may be revoked by the maintainers for guideline breaches or
+  inaccurate claims;
+- is entirely voluntary — running the software confers no obligation
+  to display anything, and displaying it confers no rights in the
+  maintainers' names beyond this badge use.
+
+Use of an adopter's own name and marks by the maintainers is a
+separate, opt-in agreement (the brand kit's press-reference option);
+it is never implied by adoption or by the badge.
+
 ## Questions
 
 Open a GitHub issue. This policy may be updated as the project matures.
