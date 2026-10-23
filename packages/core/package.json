@@ -1,6 +1,6 @@
 {
   "name": "@krediwall/core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Core evaluation loop and verdict state machine for the Krediwall Credit-on-UPI fraud firewall.",
   "license": "Apache-2.0",
   "author": "Kapil",
@@ -15,5 +15,12 @@
   "scripts": {
     "build": "tsc -b",
     "prepublishOnly": "tsc -b"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/peopleofproduct/krediwall.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/peopleofproduct/krediwall#readme",
+  "bugs": "https://github.com/peopleofproduct/krediwall/issues"
 }

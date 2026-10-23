@@ -1,6 +1,6 @@
 {
   "name": "@krediwall/telemetry-rules",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "In-memory velocity and heuristic rule blocks for the Krediwall fraud firewall. Zero runtime dependencies.",
   "license": "Apache-2.0",
   "author": "Kapil",
@@ -17,6 +17,13 @@
     "prepublishOnly": "tsc -b"
   },
   "dependencies": {
-    "@krediwall/core": "0.2.0"
-  }
+    "@krediwall/core": "0.2.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/peopleofproduct/krediwall.git",
+    "directory": "packages/telemetry-rules"
+  },
+  "homepage": "https://github.com/peopleofproduct/krediwall#readme",
+  "bugs": "https://github.com/peopleofproduct/krediwall/issues"
 }

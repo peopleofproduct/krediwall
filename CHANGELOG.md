@@ -3,6 +3,17 @@
 All notable changes to Krediwall. The project is pre-1.0 alpha; minor
 versions may break APIs until a 1.0 is cut.
 
+## 0.2.1 — npm ↔ GitHub linkage
+
+### Added
+
+- `repository`, `homepage` and `bugs` fields on all four published
+  packages — npm package pages now link back to this GitHub repo
+  (with the correct package subdirectory), so anyone landing on npm
+  finds the source, the README and the issue tracker.
+- npm version badges on the README, and the maturity note now says the
+  packages are published (it predated the 0.1.0 release).
+
 ## 0.2.0 — operational completeness
 
 Republished all four `@krediwall/*` packages to the npm registry.
