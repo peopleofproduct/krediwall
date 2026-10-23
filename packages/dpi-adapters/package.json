@@ -1,6 +1,6 @@
 {
   "name": "@krediwall/dpi-adapters",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Connectors for Indian national fraud intelligence feeds (Chakshu, FRI) used as VPA reputation signals.",
   "license": "Apache-2.0",
   "author": "Kapil",
@@ -17,6 +17,6 @@
     "prepublishOnly": "tsc -b"
   },
   "dependencies": {
-    "@krediwall/core": "0.1.0"
+    "@krediwall/core": "0.2.0"
   }
 }

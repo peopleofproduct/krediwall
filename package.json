@@ -1,6 +1,6 @@
 {
   "name": "krediwall",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Krediwall — high-velocity Credit-on-UPI fraud firewall. Zero-dependency, in-memory transaction evaluation engine targeting sub-5ms verdicts.",
   "license": "Apache-2.0",
