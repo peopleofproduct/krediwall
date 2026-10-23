@@ -6,20 +6,37 @@ files are in [feed-snapshot-format.md](feed-snapshot-format.md).
 
 ## Where it sits
 
-```
-payer app → PSP / lender switch → [ KREDIWALL: in-process verdict ] → NPCI → issuer
-```
+Three deployment shapes, one engine:
 
-Two deployment shapes, same engine:
+```mermaid
+flowchart LR
+  subgraph INPROC["In-process — the intended path"]
+    A1["your switch service<br/>new KrediwallAdapter(rules)"] --> A2["µs latency, zero network hops"]
+  end
+  subgraph SIDE["Sidecar — reference gateway"]
+    B1["POST /v1/evaluate · bearer auth<br/>/healthz · /readyz · /metrics"] --> B2["same engine, one hop away"]
+  end
+  subgraph HOSTED["Managed Transit — commercial, future"]
+    C1["Krediwall-operated endpoint<br/>SLA · managed feed ingestion"]
+  end
+  INPROC --> ENG["the same FirewallEngine"]
+  SIDE --> ENG
+  HOSTED -.->|"same verdict contract"| ENG
+  ENG -.->|"exportState / restoreState<br/>atomic file · SIGHUP hot-reload carries history"| WARM["restart warm-up<br/>bounded by one windowMs"]
+```
 
 1. **In-process (library).** `new KrediwallAdapter(rules)` inside your
    switch/authorisation service. Zero network hops; verdict latency is the
    measured microsecond range in [README](../README.md#design-guardrails--and-what-we-measure).
 2. **Sidecar (HTTP gateway).** `createHttpAdapter(adapter).listen(port)`
-   gives `POST /v1/evaluate` and `GET /healthz`. The gateway validates
-   request shape and caps bodies at 16 KB but has **no authentication or
-   TLS** — bind it to a loopback/segmented interface and put your own
-   network controls in front.
+   gives `POST /v1/evaluate`, `/healthz`, `/readyz` and `/metrics`, with
+   optional bearer auth (`KREDIWALL_API_KEY`, constant-time compare) and
+   strict request validation. It still terminates **no TLS** — bind it to
+   a loopback/segmented interface and put your own network controls
+   (mTLS, service mesh) in front.
+3. **Managed Transit (commercial, future).** The hosted tier: the same
+   verdict contract, operated by us with SLAs and managed feed
+   ingestion. Not in this repository.
 
 Whichever shape you pick, the verdict is synchronous: ALLOW, REVIEW or
 BLOCK with per-rule reasons and `elapsedMicros`.
@@ -230,6 +247,8 @@ ring state for 100k lines; serialise on a maintenance cadence, not per
 transaction.
 
 ## Feed operations
+
+![What happens when the feed doesn't arrive — the gateway re-reads the snapshot on a refresh cadence, a failed refresh keeps serving the previous snapshot, and staleness surfaces on /readyz](assets/feed-lifecycle.svg)
 
 - Produce `fri-latest.json` (format above) from your DIP/FRI feed on your
   own cadence, then `loadFriSnapshotFile` on a refresh loop or on file

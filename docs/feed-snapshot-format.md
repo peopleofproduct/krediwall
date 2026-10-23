@@ -6,6 +6,8 @@ reach onboarded stakeholders through DoT's Digital Intelligence Platform,
 and this library never calls a government API. This document describes the
 file you hand to `loadFriSnapshotFile(feed, path, opts)`.
 
+![The feed freshness loop — DIP export to translated snapshot to gateway auto-refresh, with the degraded path when a refresh fails](assets/feed-lifecycle.svg)
+
 ## Shape
 
 ```jsonc
