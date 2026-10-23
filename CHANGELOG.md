@@ -71,6 +71,10 @@ versions may break APIs until a 1.0 is cut.
   root `npm run publish:check` (pack dry-run) and `docs/publishing.md`
   (version-synced releases, provenance guidance, post-publish
   verification).
+- **`docs/getting-started.md`** — the full walkthrough in plain words:
+  nine steps from `npm run demo` through the gateway, API key, fraud
+  feed, dashboard, replay calibration and the decision trail, each with
+  the command, the expected output and what it means.
 
 ## 0.1.0 — first tagged state
 

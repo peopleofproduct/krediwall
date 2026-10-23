@@ -56,11 +56,13 @@ node examples/reference-gateway.mjs          # http://localhost:8080
 ```bash
 curl -s http://localhost:8080/v1/evaluate \
   -H 'content-type: application/json' \
-  -H 'authorization: Bearer demo-key' \
   -d '{ "txnId":"t-1", "creditLineId":"line-42", "payerVpa":"user@okbank",
         "payeeVpa":"pos1@ybl", "amountPaise":4999900, "creditLimitPaise":10000000,
         "timestampMs":1760000000000, "terminalVerified":false }'
 ```
+
+(Add `-H 'authorization: Bearer <key>'` once you set `KREDIWALL_API_KEY` —
+the walkthrough covers that in Step 4.)
 
 ```jsonc
 { "verdict": "BLOCK", "degraded": false, "elapsedMicros": 23.4,
@@ -72,8 +74,13 @@ curl -s http://localhost:8080/v1/evaluate \
 
 The gateway is configured by environment variables (rules JSON, FRI feed,
 state file, decision log, bearer key) and serves `/healthz`, `/readyz` and
-Prometheus `/metrics`. **The full API contract is `docs/api/openapi.yaml`** —
+Prometheus `/metrics`. **Every response carries an `x-request-id`** (echoed
+when you send one), and **the full API contract is `docs/api/openapi.yaml`** —
 import it into Postman, your API gateway, or client codegen.
+
+New here? **[docs/getting-started.md](docs/getting-started.md) walks all of
+it in plain words** — from `npm run demo` to the dashboard, calibration and
+the review trail, one command at a time.
 
 Or bring the whole stack — gateway + Prometheus + a pre-wired Grafana
 dashboard with alerts — up in one command:
@@ -169,6 +176,7 @@ createHttpAdapter(adapter).listen(8080);
 
 ## Documentation
 
+- [Getting started](docs/getting-started.md) — **the full walkthrough in plain words: run it, query it, feed it, watch it, calibrate it**
 - [Executive summary](docs/executive-summary.md) — one page for risk, fraud and product leads
 - [Problem statement](docs/problem-statement.md) — the threat model and why credit-funded UPI is different
 - [Integration guide](docs/integration-guide.md) — production deployment, restarts, HA, feeds and limits
