@@ -12,9 +12,9 @@
   <defs>
     <!-- THEME: edit these three stops to recolour the tile -->
     <linearGradient id="kw-bg" x1="0.15" y1="0" x2="0.85" y2="1">
-      <stop offset="0" stop-color="#5B6BE0"/>
-      <stop offset="0.55" stop-color="#24206B"/>
-      <stop offset="1" stop-color="#0A0F2C"/>
+      <stop offset="0" stop-color="#34343E"/>
+      <stop offset="0.55" stop-color="#121217"/>
+      <stop offset="1" stop-color="#000000"/>
     </linearGradient>
     <radialGradient id="kw-sheen" cx="0.28" cy="0.08" r="0.85">
       <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.45"/>
@@ -55,9 +55,9 @@
   <defs>
     <!-- THEME: edit these three stops to recolour the tile -->
     <linearGradient id="kw-bg" x1="0.15" y1="0" x2="0.85" y2="1">
-      <stop offset="0" stop-color="#5B6BE0"/>
-      <stop offset="0.55" stop-color="#24206B"/>
-      <stop offset="1" stop-color="#0A0F2C"/>
+      <stop offset="0" stop-color="#34343E"/>
+      <stop offset="0.55" stop-color="#121217"/>
+      <stop offset="1" stop-color="#000000"/>
     </linearGradient>
     <radialGradient id="kw-sheen" cx="0.28" cy="0.08" r="0.85">
       <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.45"/>

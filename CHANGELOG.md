@@ -3,6 +3,14 @@
 All notable changes to Krediwall. The project is pre-1.0 alpha; minor
 versions may break APIs until a 1.0 is cut.
 
+## Unreleased
+
+### Changed
+
+- Brand icon switched to the black masonry variant; the embeds in
+  `before-after.svg`, `dedupe-retry.svg` and `feed-lifecycle.svg`
+  recoloured to match.
+
 ## Unreleased — brand identity
 
 ### Added
