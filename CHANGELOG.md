@@ -3,6 +3,36 @@
 All notable changes to Krediwall. The project is pre-1.0 alpha; minor
 versions may break APIs until a 1.0 is cut.
 
+## Unreleased — visual architecture
+
+### Added
+
+- **Mermaid diagrams, reviewable as code** (GitHub renders them natively):
+  system-context map in the README (every stakeholder: payment path,
+  credit signals, feed pipeline, audit trail, regulators as context),
+  the verdict decision flowchart (replaces the old ASCII box), the
+  authorization sequence and state/hot-reload lifecycle in the new
+  `docs/architecture.md`, three deployment topologies plus restart
+  warm-up in the integration guide, and a latency-budget visual in the
+  README guardrails.
+- **`docs/assets/PROMPTS.md`** — regeneration prompts (shared context
+  preamble + style guide) for four marketing-grade SVGs:
+  before/after comparison, open-core split, six threat-pattern cards,
+  and the day-one adoption timeline. Generated assets drop into
+  `docs/assets/`.
+- **Private visual prompts** — delivered outside the repository
+  (`~/apps/krediwall-internal/`): stakeholder value map, value
+  quantification (real pricing — internal only), pilot-on-a-page,
+  competitive positioning, adoption funnel with the attribution loop,
+  internal roadmap. Never committed.
+
+### Fixed
+
+- The integration guide no longer claims the gateway has "no
+  authentication" — bearer auth (`KREDIWALL_API_KEY`) shipped with the
+  first release; the guide now shows it and keeps the honest note that
+  the gateway terminates no TLS.
+
 ## Unreleased — adoption & attribution program
 
 ### Added

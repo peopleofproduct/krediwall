@@ -30,6 +30,47 @@ Fraudsters noticed early. Reported UPI fraud has grown roughly **5× in four yea
 
 *(The numbers above come from government answers in Parliament, RBI and DoT press releases and news reports — every claim is cited in the [market opportunity](docs/market-opportunity.md) and [problem statement](docs/problem-statement.md) docs.)*
 
+## Where it sits
+
+Every participant in one picture: the payment path, the lender-side credit
+signals and fraud feed the engine consumes, and the audit trail it emits.
+Krediwall calls no government API — feeds arrive through the lender's own
+DIP/FRI pipeline, exactly as RBI directed banks to plug in.
+
+```mermaid
+flowchart LR
+  subgraph APP["Payer"]
+    U["UPI app"]
+  end
+  subgraph LENDER["PSP / lender"]
+    S["payment switch"]
+    subgraph KW["Krediwall — synchronous, in-process"]
+      E["verdict: ALLOW · REVIEW · BLOCK<br/>in microseconds, before money moves"]
+    end
+    C["credit-line systems<br/>sanctioned limit · utilisation · line age"]
+    R["merchant registry<br/>VPA → mobile (optional)"]
+  end
+  subgraph FEED["Lender-side fraud feed pipeline"]
+    T["DoT/DIP export<br/>CSV · JSON · NDJSON"]
+    X["translate-dip-export.mjs"]
+    F["fri-latest.json<br/>HMAC digests · auto-refresh · staleness"]
+  end
+  subgraph AUDIT["Audit"]
+    D["decision log → review queue<br/>FMR · CERT-In deadlines"]
+  end
+  N["NPCI / UPI rails → payee"]
+  U -->|"authorization"| S
+  S --> E
+  C -.->|"credit signals"| E
+  R -.-> E
+  E -->|"ALLOW"| N
+  E -->|"REVIEW"| S
+  E -->|"BLOCK — decline before money moves"| S
+  T --> X --> F
+  F -.->|"feed lookups"| E
+  E -.->|"verdict + evidence"| D
+```
+
 ## The problem in one paragraph
 
 When a savings-account UPI payment is fraudulent, the victim loses their own balance. When a **credit-funded** UPI payment is fraudulent, the loss is the **lender's capital** — and UPI is push-and-final, so there is no later chance to pull it back. Credit Line on UPI (CLOU) and RuPay credit cards on UPI put lender-funded money on a real-time rail, and mule networks can empty a fresh credit line quickly. Generic UPI and card fraud systems do not see credit-line state such as the sanctioned limit, how much of it has been burned in the last minute, or how new the line is. Krediwall does. Read the longer [problem statement](docs/problem-statement.md).
@@ -97,23 +138,37 @@ docker compose -f deploy/docker-compose.yml up --build
 
 ## How a verdict is produced
 
+One authorization, end to end: retries are answered from the dedupe window,
+malformed payloads degrade to REVIEW (never a silent ALLOW), rules run in
+order, and the first BLOCK short-circuits the chain.
+
+```mermaid
+flowchart TD
+  IN["authorization request<br/>payer & payee VPA · amount · credit limit · line age · terminal flag"] --> DUP{"repeat txnId<br/>in dedupe window?"}
+  DUP -->|"yes — switch retry"| CACHED["return the original verdict<br/>rule state is not re-counted"]
+  DUP -->|no| SHAPE{"fields well-formed?"}
+  SHAPE -->|no| DEG["REVIEW · degraded: true<br/>never a silent ALLOW"]
+  SHAPE -->|yes| RULES["rules run in order — each fires or stays quiet:<br/>velocity-spike · mule-drain · first-payee · structuring<br/>dormant-reactivation · odd-hours · feed-reputation (DoT FRI)"]
+  RULES --> FOLD{"fold to the worst severity<br/>first BLOCK short-circuits"}
+  FOLD --> A["ALLOW"]
+  FOLD --> R["REVIEW → manual queue"]
+  FOLD --> B["BLOCK → decline"]
+  A --> OUT["verdict + hits + evidence + ruleErrors + degraded + elapsedMicros"]
+  R --> OUT
+  B --> OUT
+  DEG --> OUT
 ```
- UPI app / PSP / lender switch
-        │  one authorisation: payer & payee VPA, amount, credit limit,
-        │  credit-line age, terminal-verified flag, optional geo cell
-        ▼
- ┌─ KrediwallAdapter (library)  or  POST /v1/evaluate (HTTP gateway) ─────────┐
- │  FirewallEngine runs rules in order and stops at the first BLOCK           │
- │    • velocity-spike  — too many distinct payees / places inside a window   │
- │    • mule-drain      — repeat tickets burning most of the limit            │
- │    • first-payee     — payee never seen on this line + large limit fraction│
- │    • structuring     — repeat tickets clustered just under a band          │
- │    • dormant-reactivation — a line spending again after a long silence     │
- │    • odd-hours       — night-band activity on a line with no history there │
- │    • feed-reputation — payee mobile number flagged in a fraud-feed snapshot│
- │    • your own rules  — implement the `Rule` interface                      │
- └──────────────▶  ALLOW | REVIEW | BLOCK  + reasons + elapsedMicros  ────────┘
-```
+
+The rules behind each node:
+
+- **velocity-spike** — too many distinct payees / places inside a window
+- **mule-drain** — repeat tickets burning most of the limit
+- **first-payee** — payee never seen on this line + large limit fraction
+- **structuring** — repeat tickets clustered just under a band
+- **dormant-reactivation** — a line spending again after a long silence
+- **odd-hours** — night-band activity on a line with no history there
+- **feed-reputation** — payee identifier flagged in a fraud-feed snapshot
+- **your own rules** — implement the `Rule` interface
 
 Request and response over HTTP:
 
@@ -164,6 +219,12 @@ createHttpAdapter(adapter).listen(8080);
 ## Design guardrails — and what we measure
 
 - **Latency target: under 5 ms per verdict.** It is an engineering budget we chose so the in-process check is negligible next to the network hops around it; it is not a regulatory figure. `npm run bench` (2M evaluations over 100k credit lines, starter rule set, single thread) measured, on a Linux x64 cloud VM (8 vCPU Intel Xeon, Node 24), **p50 ≈ 0.9 µs, p99 ≈ 2.6–2.9 µs, p99.9 ≈ 6.7–7.4 µs**; across three runs 0–1 of 2M evaluations exceeded 5 ms (worst case 3.8–5.3 ms) and 23–37 exceeded 1 ms. On a heavily loaded laptop the p99 was 9–15 µs and rare outliers reached tens of ms alongside V8 garbage-collection pauses. It is a measurement, not a hard real-time guarantee; run it on your own hardware.
+
+```mermaid
+flowchart LR
+  B["the 5,000 µs budget<br/>reserved inside the authorization"] --> M["measured on a cloud VM<br/>p50 ≈ 0.9 µs · p99 ≈ 2.6–2.9 µs · p99.9 ≈ 7.4 µs"]
+  M --> H["even the p99.9 tail stays under 0.2% of the budget<br/>— a measurement, not a hard real-time guarantee"]
+```
 - **Zero runtime dependencies** in `core` and `telemetry-rules`; everything uses Node built-ins.
 - **Allocation-light, bounded state.** Rules keep per-credit-line history in fixed-size typed-array rings (about 1.4 KB per tracked line at default settings) and the set of tracked lines is LRU-capped (`maxTrackedLines`, default 100,000). Each call still allocates a couple of small objects; it is not allocation-free.
 - **Failure isolation and an audit seam.** A rule that throws is skipped, recorded in `evaluation.ruleErrors` and surfaced via an `onRuleError` hook — it cannot take the pipeline down, and its absence is visible. `onEvaluation` emits every verdict for your audit queue; malformed transactions return REVIEW, never a silent ALLOW.
@@ -183,6 +244,7 @@ createHttpAdapter(adapter).listen(8080);
 ## Documentation
 
 - [Getting started](docs/getting-started.md) — **the full walkthrough in plain words: run it, query it, feed it, watch it, calibrate it**
+- [Architecture](docs/architecture.md) — the life of one authorization, as sequence diagrams
 - [Executive summary](docs/executive-summary.md) — one page for risk, fraud and product leads
 - [Problem statement](docs/problem-statement.md) — the threat model and why credit-funded UPI is different
 - [Integration guide](docs/integration-guide.md) — production deployment, restarts, HA, feeds and limits
@@ -192,6 +254,7 @@ createHttpAdapter(adapter).listen(8080);
 - [Commercial strategy](docs/commercial-strategy.md) — open-core split and pricing
 - [Publishing](docs/publishing.md) — how `@krediwall/*` reaches npm
 - [Brand kit](docs/brand-kit.md) — the "Secured by Krediwall" badge and mutual attribution terms
+- [Visual assets](docs/assets/PROMPTS.md) — regeneration prompts for the infographic SVGs used across these docs
 - [Glossary](docs/glossary.md) — CLOU, VPA, PSP, TPAP, FRI, DIP, EWS, FMR and more
 
 ## Project
