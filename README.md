@@ -1,5 +1,10 @@
 # Krediwall
 
+[![npm @krediwall/core](https://img.shields.io/npm/v/@krediwall/core?label=%40krediwall%2Fcore)](https://www.npmjs.com/package/@krediwall/core)
+[![npm @krediwall/telemetry-rules](https://img.shields.io/npm/v/@krediwall/telemetry-rules?label=%40krediwall%2Ftelemetry-rules)](https://www.npmjs.com/package/@krediwall/telemetry-rules)
+[![npm @krediwall/dpi-adapters](https://img.shields.io/npm/v/@krediwall/dpi-adapters?label=%40krediwall%2Fdpi-adapters)](https://www.npmjs.com/package/@krediwall/dpi-adapters)
+[![npm @krediwall/enterprise-proxy](https://img.shields.io/npm/v/@krediwall/enterprise-proxy?label=%40krediwall%2Fenterprise-proxy)](https://www.npmjs.com/package/@krediwall/enterprise-proxy)
+
 **An open-source, in-process fraud firewall for credit-funded UPI payments.**
 Krediwall (*credit + wall* — a checkpoint on the credit lane, a Panini project) scores each authorisation as `ALLOW`, `REVIEW` or `BLOCK` using signals only a lender has — credit limit, utilisation, credit-line age — before the money moves.
 
@@ -8,7 +13,7 @@ Krediwall (*credit + wall* — a checkpoint on the credit lane, a Panini project
 | **What it is** | A TypeScript library plus a small HTTP gateway that runs *inside your process*, with a design target of under 5 ms per verdict. |
 | **Who it's for** | Lenders (banks, small finance banks, NBFCs) that fund UPI payments from credit lines or RuPay credit cards, and the fintech apps that front them. |
 | **What it is not** | Not an ML platform, not a case-management or AML suite, and not a replacement for NPCI's fraud monitoring. It adds lender-side credit context to what you already run. |
-| **Maturity** | **Alpha.** Rules and thresholds are illustrative and not tuned on production data. Not yet published to npm. |
+| **Maturity** | **Alpha.** Rules and thresholds are illustrative and not tuned on production data. Published to npm as `@krediwall/*` — see the version badges above. |
 
 ## In plain words
 
