@@ -70,7 +70,11 @@ can escalate it to a signature if they prefer.
 
 ## 4. Artwork
 
-Official badge artwork (SVG, dark/light) will live in this repository
-under `docs/assets/` once designed. Until then, use plain text:
-*"Additional fraud screening on credit-funded UPI by Krediwall"*
-linked to this repository.
+The product icon lives at [`docs/assets/krediwall-icon.svg`](assets/krediwall-icon.svg)
+— the masonry wall with one flagged brick. It may be used in badge
+lockups under the licence above; do not recolour, stretch or redraw it.
+
+A dedicated "Secured by Krediwall" badge lockup (icon + wordmark,
+dark/light variants) is still to be designed. Until then, pair the
+icon with plain text: *"Additional fraud screening on credit-funded
+UPI by Krediwall"* linked to this repository.

@@ -3,6 +3,16 @@
 All notable changes to Krediwall. The project is pre-1.0 alpha; minor
 versions may break APIs until a 1.0 is cut.
 
+## Unreleased — brand identity
+
+### Added
+
+- **Brand icon** at `docs/assets/krediwall-icon.svg` — the masonry
+  wall with one flagged brick — shown at the top of the README and
+  embedded in the before/after, dedupe-retry and feed-lifecycle
+  visuals. Referenced from `docs/brand-kit.md`, which still notes the
+  "Secured by Krediwall" badge lockup is a separate design to come.
+
 ## Unreleased — visual architecture
 
 ### Added

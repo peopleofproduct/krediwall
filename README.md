@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/krediwall-icon.svg" alt="Krediwall — a wall of transactions with one flagged brick" width="140">
+</p>
+
 # Krediwall
 
 [![npm @krediwall/core](https://img.shields.io/npm/v/@krediwall/core?label=%40krediwall%2Fcore)](https://www.npmjs.com/package/@krediwall/core)
