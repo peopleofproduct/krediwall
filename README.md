@@ -145,7 +145,7 @@ benchmarks/run.mjs      npm run bench     latency measurement
 benchmarks/soak.mjs     npm run soak      sustained-load boundedness check
 ```
 
-*DPI here means Digital Public Infrastructure (India's public rails), not deep packet inspection.* Packages are workspace-local for now; `npm install @krediwall/...` will work once they are published.
+*DPI here means Digital Public Infrastructure (India's public rails), not deep packet inspection.* The packages are **published to npm** — `npm install @krediwall/core @krediwall/telemetry-rules @krediwall/enterprise-proxy` and use them in your own service; the runtime has zero dependencies. Or clone this repo to run the examples, benchmark and deployment stack.
 
 ```ts
 import { KrediwallAdapter, createHttpAdapter } from '@krediwall/enterprise-proxy';

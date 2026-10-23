@@ -6,3 +6,6 @@ coverage/
 *.log
 .env
 .env.*
+
+# npm auth tokens must never be committed
+.npmrc

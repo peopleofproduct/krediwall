@@ -76,6 +76,16 @@ versions may break APIs until a 1.0 is cut.
   feed, dashboard, replay calibration and the decision trail, each with
   the command, the expected output and what it means.
 
+## 0.1.0 — published to npm
+
+`@krediwall/core`, `@krediwall/telemetry-rules`, `@krediwall/dpi-adapters`
+and `@krediwall/enterprise-proxy` 0.1.0 are live on the public registry.
+Verified end to end from a clean directory: `npm install` (zero
+vulnerabilities — no runtime dependencies), construct an adapter, run a
+velocity-spike scenario and get a BLOCK verdict with structured
+evidence. `.npmrc` added to `.gitignore` so local publish tokens can
+never be committed.
+
 ## 0.1.0 — first tagged state
 
 - Core engine with rule-order evaluation, first-BLOCK short-circuit,
