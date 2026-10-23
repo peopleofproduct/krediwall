@@ -191,11 +191,13 @@ createHttpAdapter(adapter).listen(8080);
 - [Market opportunity](docs/market-opportunity.md) — volumes, fraud data and timing, with citations
 - [Commercial strategy](docs/commercial-strategy.md) — open-core split and pricing
 - [Publishing](docs/publishing.md) — how `@krediwall/*` reaches npm
+- [Brand kit](docs/brand-kit.md) — the "Secured by Krediwall" badge and mutual attribution terms
 - [Glossary](docs/glossary.md) — CLOU, VPA, PSP, TPAP, FRI, DIP, EWS, FMR and more
 
 ## Project
 
 - [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [Trademarks](TRADEMARKS.md) · [NOTICE](NOTICE) · [Changelog](CHANGELOG.md)
+- **Running Krediwall in production?** [List yourself in ADOPTERS.md](ADOPTERS.md) and check the [brand kit](docs/brand-kit.md) for the "Secured by Krediwall" badge — both voluntary, both revocable, never tied to the licence.
 - *Naming:* **Panini** is the umbrella for People of Product's open-source work for India's digital public infrastructure (see the sibling Panini project). **Krediwall** is this product.
 
 ## License

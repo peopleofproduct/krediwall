@@ -3,6 +3,34 @@
 All notable changes to Krediwall. The project is pre-1.0 alpha; minor
 versions may break APIs until a 1.0 is cut.
 
+## Unreleased — adoption & attribution program
+
+### Added
+
+- **`ADOPTERS.md`** — voluntary, tiered adopter listing (name only /
+  name + logo / case study), revocable at any time; Apache-2.0
+  requires no disclosure and the engine does no usage tracking.
+- **`docs/brand-kit.md`** — the "Secured by Krediwall" badge licence
+  (we grant adopters running the engine in production a scoped,
+  revocable right to display it) plus the opt-in press-reference option
+  (adopters may grant us name/logo/case-study rights with joint
+  disclosure review and 30-day revocability). Neither is implied by
+  adoption.
+- `TRADEMARKS.md` — badge-programme carve-out; explicit that adopter
+  marks are only ever used under separate opt-in.
+- `docs/commercial-strategy.md` — "Adoption and attribution" section
+  (passive NOTICE-based, voluntary open-tier and contractual paid-tier
+  lanes; Verified Deployment certification; anonymized benchmark
+  report).
+
+### Changed
+
+- Pricing figures removed from `docs/commercial-strategy.md` — the tier
+  structure stays public, specific prices don't; published ceilings
+  anchor negotiations.
+- `SECURITY.md` no longer says the project is unpublished (npm packages
+  are live).
+
 ## 0.2.1 — npm ↔ GitHub linkage
 
 ### Added
