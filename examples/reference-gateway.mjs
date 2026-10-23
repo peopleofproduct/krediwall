@@ -17,8 +17,13 @@
 //                           resolving non-phone payee VPAs to mobiles
 //   KREDIWALL_STATE_FILE    engine-state file for restart warm-up
 //   KREDIWALL_STATE_SAVE_MS   save cadence when a state file is set (default 60s)
+//   KREDIWALL_API_KEY       require `Authorization: Bearer <key>` on
+//                           /v1/evaluate and /metrics (unset = open)
+//   KREDIWALL_DECISION_LOG  JSONL decision trail, one line per evaluation —
+//                           the record your review queue / FMR defence is
+//                           built from (see tools/decisions-report.mjs)
 import { createRequire } from 'node:module';
-import { existsSync, readFileSync } from 'node:fs';
+import { createWriteStream, existsSync, readFileSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
 const { KrediwallAdapter, createHttpAdapter } = require('@krediwall/enterprise-proxy');
@@ -40,6 +45,7 @@ console.log(
 );
 
 // --- fraud feed -----------------------------------------------------------
+let feedStale = false;
 const snapshotPath = env('KREDIWALL_FRI_SNAPSHOT');
 if (snapshotPath !== undefined) {
   const key = env('KREDIWALL_FRI_HMAC_KEY');
@@ -51,6 +57,7 @@ if (snapshotPath !== undefined) {
   const result = loadFriSnapshotFile(feed, snapshotPath, {
     maxAgeMs: Number(env('KREDIWALL_FRI_MAX_AGE_MS') ?? 6 * 3_600_000),
   });
+  feedStale = result.stale;
   // Optional merchant-registry resolver: maps non-phone payee VPAs to
   // their onboarding mobile. In production this is your merchant DB, not
   // a file — the seam is identical.
@@ -69,7 +76,43 @@ if (snapshotPath !== undefined) {
 }
 
 // --- adapter + restart warm-up -------------------------------------------
-const adapter = new KrediwallAdapter(rules);
+// readinessProbe powers GET /readyz: a stale feed is a degraded-not-dead
+// state, surfaced to the load balancer rather than hidden in logs. The
+// engine dedupe window absorbs switch retries so replays can't double-count.
+const decisionLogPath = env('KREDIWALL_DECISION_LOG');
+let decisionStream;
+if (decisionLogPath !== undefined) {
+  // Buffered appends: the onEvaluation hook must never block the hot path,
+  // so it hands the line to a write stream and returns. In production swap
+  // this for your own queue/writer — the seam is identical. The log stays
+  // inside your perimeter and contains raw VPAs: treat it like payment data.
+  decisionStream = createWriteStream(decisionLogPath, { flags: 'a' });
+  console.log(`decision log: appending to ${decisionLogPath}`);
+}
+const adapter = new KrediwallAdapter(rules, {
+  engine: {
+    dedupeCapacity: 10_000,
+    onEvaluation: (evaluation, txn) => {
+      if (decisionStream === undefined) return;
+      const record = {
+        atMs: Date.now(),
+        txnId: txn.txnId,
+        creditLineId: txn.creditLineId,
+        payerVpa: txn.payerVpa,
+        payeeVpa: txn.payeeVpa,
+        amountPaise: txn.amountPaise,
+        creditLimitPaise: txn.creditLimitPaise,
+        verdict: evaluation.verdict,
+        degraded: evaluation.degraded,
+        elapsedMicros: evaluation.elapsedMicros,
+        hits: evaluation.hits,
+        ruleErrors: evaluation.ruleErrors,
+      };
+      decisionStream.write(JSON.stringify(record) + '\n');
+    },
+  },
+  readinessProbe: () => (feedStale ? ['fri snapshot older than maxAgeMs'] : []),
+});
 if (statePath !== undefined && existsSync(statePath)) {
   try {
     adapter.restoreStateFromFile(statePath);
@@ -90,9 +133,13 @@ if (statePath !== undefined) {
 }
 
 // --- HTTP surface ---------------------------------------------------------
-const server = createHttpAdapter(adapter);
+const apiKey = env('KREDIWALL_API_KEY');
+const server = createHttpAdapter(adapter, apiKey !== undefined ? { apiKey } : undefined);
 server.listen(port, () => {
-  console.log(`listening on :${port}  — POST /v1/evaluate · GET /healthz · GET /metrics`);
+  console.log(
+    `listening on :${port}  — POST /v1/evaluate · GET /healthz · GET /readyz · GET /metrics` +
+      (apiKey !== undefined ? ' (Bearer auth on /v1/evaluate and /metrics)' : ''),
+  );
 });
 
 const shutdown = (signal) => {
@@ -104,6 +151,7 @@ const shutdown = (signal) => {
       console.error(`state: final save failed: ${e.message}`);
     }
   }
+  if (decisionStream !== undefined) decisionStream.end();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 2_000).unref();
 };

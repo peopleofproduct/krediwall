@@ -1,0 +1,348 @@
+openapi: 3.1.0
+info:
+  title: Krediwall firewall API
+  version: 1.0.0
+  summary: Synchronous Credit-on-UPI fraud verdicts for a payment switch pipeline.
+  description: |
+    Krediwall evaluates one Credit-on-UPI authorization synchronously and
+    answers with a verdict — `ALLOW`, `REVIEW` or `BLOCK` — plus the rule
+    hits, structured evidence and engine telemetry behind it.
+
+    Every response carries an `x-request-id` header; send your own and it
+    is echoed back so verdicts correlate with switch logs.
+
+    When the deployment sets `KREDIWALL_API_KEY`, `/v1/evaluate` and
+    `/metrics` require `Authorization: Bearer <key>`. `/healthz` and
+    `/readyz` never do — orchestrator probes must always get through.
+    Bank deployments typically also front this service with mTLS or a
+    service mesh; that is outside this contract.
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+servers:
+  - url: http://localhost:8080
+    description: Reference gateway default
+
+security: []
+
+paths:
+  /v1/evaluate:
+    post:
+      operationId: evaluateTransaction
+      summary: Evaluate one Credit-on-UPI authorization
+      description: |
+        The synchronous hot path. The engine runs its rules in order,
+        stops at the first BLOCK, and returns the folded verdict.
+
+        Transport errors (bad JSON, wrong types) are rejected with 400
+        and a `field` pointing at the offending key. Semantically odd
+        but well-formed payloads are *not* rejected — the engine's
+        malformed-input guard answers `REVIEW` with `degraded: true` so
+        the audit trail records them.
+
+        A repeated `txnId` inside the dedupe window returns the original
+        evaluation without re-running rules.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Transaction'
+            examples:
+              unverifiedTerminalDrain:
+                summary: Large ticket to an unverified terminal
+                value:
+                  txnId: t-1
+                  creditLineId: line-42
+                  payerVpa: user@okbank
+                  payeeVpa: pos1@ybl
+                  amountPaise: 4999900
+                  creditLimitPaise: 10000000
+                  timestampMs: 1760000000000
+                  terminalVerified: false
+      responses:
+        '200':
+          description: Verdict produced (the verdict itself may be ALLOW, REVIEW or BLOCK)
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evaluation'
+              examples:
+                block:
+                  value:
+                    verdict: BLOCK
+                    hits:
+                      - rule: telemetry.mule-drain
+                        verdict: BLOCK
+                        reason: 100.0% of limit burned via 2 repeat band tickets to unverified terminal
+                        evidence:
+                          burnRatio: 1.0
+                          repeats: 2
+                          unverifiedTerminal: 1
+                    ruleErrors: []
+                    degraded: false
+                    elapsedMicros: 23.4
+        '400':
+          description: |
+            Malformed request. `field` names the offending key when the
+            payload parsed but failed the transport contract.
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missingField:
+                  value:
+                    error: malformed transaction
+                    requestId: 3f9c0a2e-1b44-4d9e-8c3d-2a1f0b9e7c11
+                    field: creditLimitPaise
+                    detail: '"creditLimitPaise" is missing (must be a safe integer >= 0)'
+                notJson:
+                  value:
+                    error: invalid request body
+                    requestId: 3f9c0a2e-1b44-4d9e-8c3d-2a1f0b9e7c11
+                    detail: not valid JSON
+        '401':
+          description: Missing or wrong bearer token (only when the deployment sets an API key)
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/RequestId'
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Body over the 16 KiB transport limit
+        '404':
+          description: Unknown route
+  /healthz:
+    get:
+      operationId: health
+      summary: Liveness — the process is up
+      description: For orchestrator liveness probes. Never requires auth.
+      responses:
+        '200':
+          description: Process up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+  /readyz:
+    get:
+      operationId: readiness
+      summary: Readiness — usable right now, or why not
+      description: |
+        Distinct from `/healthz`: the process is up *and* the deployment
+        considers itself usable — feed not stale, state restored. Returns
+        503 with the problem list otherwise, so a load balancer can hold
+        traffic. Never requires auth.
+      responses:
+        '200':
+          description: Ready
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ready]
+                properties:
+                  ready:
+                    type: boolean
+                    enum: [true]
+        '503':
+          description: Not ready, with the reasons
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ready, problems]
+                properties:
+                  ready:
+                    type: boolean
+                    enum: [false]
+                  problems:
+                    type: array
+                    items:
+                      type: string
+                    example: [fri snapshot older than maxAgeMs]
+  /metrics:
+    get:
+      operationId: metrics
+      summary: Prometheus text exposition
+      description: |
+        Counters (evaluations, verdicts, per-rule hits and errors, hook
+        errors, dedupe), an `krediwall_eval_latency_micros` histogram and
+        per-rule gauges (`trackedLines`, `maxTrackedLines`,
+        `evictedLines`). Import `deploy/grafana/dashboards/krediwall.json`
+        for a ready-made dashboard, and `deploy/prometheus/alerts.yml` for
+        alert rules.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Prometheus exposition format
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: |
+                # HELP krediwall_evaluations_total Authorisations evaluated
+                # TYPE krediwall_evaluations_total counter
+                krediwall_evaluations_total 15
+                # TYPE krediwall_verdict_total counter
+                krediwall_verdict_total{verdict="ALLOW"} 9
+                krediwall_verdict_total{verdict="REVIEW"} 4
+                krediwall_verdict_total{verdict="BLOCK"} 2
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Set at deploy time via KREDIWALL_API_KEY; unset means open.
+
+  headers:
+    RequestId:
+      description: Echoed from the request's x-request-id when provided, otherwise generated.
+      schema:
+        type: string
+
+  schemas:
+    Transaction:
+      type: object
+      required:
+        - txnId
+        - creditLineId
+        - payerVpa
+        - payeeVpa
+        - amountPaise
+        - creditLimitPaise
+        - timestampMs
+        - terminalVerified
+      additionalProperties: true # optional fields (mcc, geoCell, creditLineApprovedAtMs) and forward compatibility
+      properties:
+        txnId:
+          type: string
+          minLength: 1
+          description: PSP-assigned transaction identifier (UPI RRN or equivalent). Repeats inside the dedupe window return the original evaluation.
+        creditLineId:
+          type: string
+          minLength: 1
+          description: Lender-side identifier of the credit line drawn on.
+        payerVpa:
+          type: string
+          minLength: 1
+          description: Payer virtual payment address (credit-line-linked).
+        payeeVpa:
+          type: string
+          minLength: 1
+          description: Payee / merchant virtual payment address.
+        amountPaise:
+          type: integer
+          minimum: 0
+          description: Transaction amount, integer paise.
+        creditLimitPaise:
+          type: integer
+          minimum: 0
+          description: Sanctioned limit on the credit line, integer paise.
+        timestampMs:
+          type: integer
+          minimum: 0
+          description: Authorization timestamp, epoch milliseconds.
+        terminalVerified:
+          type: boolean
+          description: Whether the acquiring terminal passed PSP verification.
+        mcc:
+          type: integer
+          description: Merchant category code, when the switch supplies one.
+        geoCell:
+          type: string
+          description: Coarse geography bucket (city/cell id), never raw lat-long.
+        creditLineApprovedAtMs:
+          type: integer
+          description: Credit-line approval timestamp, epoch ms — feeds fresh-line heuristics.
+    Evaluation:
+      type: object
+      required: [verdict, hits, ruleErrors, degraded, elapsedMicros]
+      properties:
+        verdict:
+          type: string
+          enum: [ALLOW, REVIEW, BLOCK]
+        hits:
+          type: array
+          description: Rule firings folded into the verdict, in rule order. Empty for a clean ALLOW.
+          items:
+            $ref: '#/components/schemas/RuleHit'
+        ruleErrors:
+          type: array
+          description: Rules that threw — their verdict contribution was skipped. Non-empty implies degraded coverage.
+          items:
+            $ref: '#/components/schemas/RuleError'
+        degraded:
+          type: boolean
+          description: True when malformed input or a throwing rule degraded this verdict. Alert on it.
+        elapsedMicros:
+          type: number
+          description: Wall-clock microseconds spent inside the engine.
+    RuleHit:
+      type: object
+      required: [rule, verdict, reason]
+      properties:
+        rule:
+          type: string
+          description: Rule name, e.g. telemetry.mule-drain.
+        verdict:
+          type: string
+          enum: [REVIEW, BLOCK]
+        reason:
+          type: string
+          description: Human-readable explanation.
+        evidence:
+          type: object
+          description: |
+            Structured evidence behind the reason — counts, ratios, band
+            values. Flat JSON-safe key/values for audit and FMR defence.
+          additionalProperties:
+            oneOf:
+              - type: number
+              - type: string
+    RuleError:
+      type: object
+      required: [rule, message]
+      properties:
+        rule:
+          type: string
+        message:
+          type: string
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Stable machine-readable error kind.
+        requestId:
+          type: string
+          description: Correlation id for this request.
+        field:
+          type: string
+          description: Offending field name (malformed transaction only).
+        detail:
+          type: string
+          description: Human-readable explanation.

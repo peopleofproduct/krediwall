@@ -18,6 +18,14 @@ export interface FirewallEngineOptions {
   readonly onEvaluation?: (evaluation: Evaluation, txn: Transaction) => void;
   /** Called when a rule throws; the rule is skipped and evaluation continues. */
   readonly onRuleError?: (rule: string, error: unknown) => void;
+  /**
+   * Switch retries can replay the same authorisation; without dedupe the
+   * second copy lands in rule state again and double-counts velocity and
+   * burn. Set a capacity (e.g. 10_000) and a repeat `txnId` returns the
+   * original evaluation verbatim — state is not polluted and the verdict
+   * stays consistent for a retried leg.
+   */
+  readonly dedupeCapacity?: number;
 }
 
 /** Portable engine state: per-rule snapshots keyed by rule name. */
@@ -41,6 +49,18 @@ export interface EngineMetrics {
   readonly ruleErrors: Readonly<Record<string, number>>;
   /** Times a hook threw. Nonzero means audit records were dropped. */
   readonly hookErrors: number;
+  /** Repeated txnIds answered from cache (only when dedupe is enabled). */
+  readonly deduped: number;
+  /**
+   * Evaluation latency histogram in microseconds. `buckets` are the
+   * upper bounds; `counts[i]` counts evaluations ≤ buckets[i], and the
+   * last count is the +Inf overflow.
+   */
+  readonly latencyMicros: {
+    readonly buckets: readonly number[];
+    readonly counts: readonly number[];
+    readonly sum: number;
+  };
 }
 
 const isWellFormed = (txn: Transaction): boolean =>
@@ -56,6 +76,9 @@ const isWellFormed = (txn: Transaction): boolean =>
 
 const errorMessage = (e: unknown): string =>
   e instanceof Error ? e.message : String(e);
+
+/** Latency histogram upper bounds in microseconds; last count is +Inf. */
+const LATENCY_BUCKETS: readonly number[] = [100, 250, 500, 1_000, 2_500, 5_000, 10_000];
 
 /**
  * Synchronous in-memory evaluation loop.
@@ -81,13 +104,21 @@ export class FirewallEngine {
   private allowCount = 0;
   private reviewCount = 0;
   private blockCount = 0;
+  private dedupedCount = 0;
+  private readonly latencyCounts = new Array<number>(LATENCY_BUCKETS.length + 1).fill(0);
+  private latencySum = 0;
   private readonly hitCounts = new Map<string, number>();
   private readonly errorCounts = new Map<string, number>();
+  private readonly seenTxns: Map<string, Evaluation> | undefined;
+  private readonly dedupeCap: number;
 
   constructor(rules: readonly Rule[], options?: FirewallEngineOptions) {
     this.rules = rules.slice();
     this.onEvaluation = options?.onEvaluation;
     this.onRuleError = options?.onRuleError;
+    const cap = options?.dedupeCapacity;
+    this.seenTxns = cap !== undefined && cap > 0 ? new Map() : undefined;
+    this.dedupeCap = cap ?? 0;
     for (const rule of this.rules) {
       this.hitCounts.set(rule.name, 0);
       this.errorCounts.set(rule.name, 0);
@@ -117,6 +148,12 @@ export class FirewallEngine {
       ruleHits,
       ruleErrors,
       hookErrors: this.hookErrors,
+      deduped: this.dedupedCount,
+      latencyMicros: {
+        buckets: LATENCY_BUCKETS,
+        counts: this.latencyCounts.slice(),
+        sum: this.latencySum,
+      },
     };
   }
 
@@ -135,6 +172,13 @@ export class FirewallEngine {
 
   evaluate(txn: Transaction): Evaluation {
     const start = performance.now();
+    if (this.seenTxns !== undefined) {
+      const prev = this.seenTxns.get(txn.txnId);
+      if (prev !== undefined) {
+        this.dedupedCount += 1;
+        return prev;
+      }
+    }
     const ctx: RuleContext = { nowMs: txn.timestampMs };
     let worst = Verdict.Allow;
     let hits: RuleHit[] | null = null;
@@ -175,13 +219,26 @@ export class FirewallEngine {
     if (worst === Verdict.Block) this.blockCount += 1;
     else if (worst === Verdict.Review) this.reviewCount += 1;
     else this.allowCount += 1;
+    const elapsed = (performance.now() - start) * 1000;
+    this.latencySum += elapsed;
+    let bucket = 0;
+    while (bucket < LATENCY_BUCKETS.length && elapsed > LATENCY_BUCKETS[bucket]!) bucket += 1;
+    this.latencyCounts[bucket]! += 1;
     const evaluation: Evaluation = {
       verdict: worst,
       hits: hits ?? EMPTY_HITS,
       ruleErrors: errors ?? EMPTY_ERRORS,
       degraded: errors !== null,
-      elapsedMicros: (performance.now() - start) * 1000,
+      elapsedMicros: elapsed,
     };
+    if (this.seenTxns !== undefined) {
+      this.seenTxns.set(txn.txnId, evaluation);
+      // Map preserves insertion order: the first key is the oldest — a
+      // FIFO cap, which is all a retry-dedupe window needs.
+      if (this.seenTxns.size > this.dedupeCap) {
+        this.seenTxns.delete(this.seenTxns.keys().next().value!);
+      }
+    }
     if (this.onEvaluation !== undefined) {
       try {
         this.onEvaluation(evaluation, txn);
@@ -227,6 +284,10 @@ export class FirewallEngine {
     this.allowCount = 0;
     this.reviewCount = 0;
     this.blockCount = 0;
+    this.dedupedCount = 0;
+    this.latencyCounts.fill(0);
+    this.latencySum = 0;
+    this.seenTxns?.clear();
     this.hitCounts.clear();
     this.errorCounts.clear();
     for (const rule of this.rules) {

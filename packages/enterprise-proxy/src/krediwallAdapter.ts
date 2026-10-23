@@ -56,8 +56,14 @@ export interface KrediwallAdapterOptions {
    * also scored against the recipient mule-ring graph.
    */
   readonly graph?: GraphEvaluator;
-  /** Passed through to the `FirewallEngine` (audit hook, error hook). */
+  /** Passed through to the `FirewallEngine` (audit hook, error hook, dedupe). */
   readonly engine?: FirewallEngineOptions;
+  /**
+   * Integrator health check for `GET /readyz`: returns the list of
+   * current problems (stale feed, cold state, upstream down). Empty =
+   * ready. Called on each probe — keep it cheap.
+   */
+  readonly readinessProbe?: () => readonly string[];
 }
 
 /**
@@ -70,11 +76,13 @@ export interface KrediwallAdapterOptions {
 export class KrediwallAdapter {
   private readonly engine: FirewallEngine;
   private readonly graph: GraphEvaluator | undefined;
+  private readonly readinessProbe: (() => readonly string[]) | undefined;
   private readonly meter = new BillingMeter();
 
   constructor(rules: readonly Rule[], options?: KrediwallAdapterOptions) {
     this.engine = new FirewallEngine(rules, options?.engine);
     this.graph = options?.graph;
+    this.readinessProbe = options?.readinessProbe;
   }
 
   handleTransaction(txn: Transaction): Evaluation {
@@ -101,6 +109,11 @@ export class KrediwallAdapter {
   /** Lifetime engine counters for observability (see also GET /metrics). */
   metrics(): EngineMetrics {
     return this.engine.metrics;
+  }
+
+  /** Current readiness problems reported by the integrator's probe. */
+  readinessProblems(): readonly string[] {
+    return this.readinessProbe?.() ?? [];
   }
 
   /** Per-rule internal counters keyed by rule name (tracked lines, evictions). */

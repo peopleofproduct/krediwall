@@ -40,6 +40,23 @@ export function renderPrometheus(
     '# HELP krediwall_hook_errors_total Audit/error hooks that threw',
     '# TYPE krediwall_hook_errors_total counter',
     `krediwall_hook_errors_total ${metrics.hookErrors}`,
+    '# HELP krediwall_deduped_total Repeat txnIds answered from the dedupe cache',
+    '# TYPE krediwall_deduped_total counter',
+    `krediwall_deduped_total ${metrics.deduped}`,
+    '# HELP krediwall_eval_latency_micros Evaluation latency histogram (µs)',
+    '# TYPE krediwall_eval_latency_micros histogram',
+  );
+  // Prometheus histogram buckets are cumulative: count all evals ≤ bound.
+  let cumulative = 0;
+  metrics.latencyMicros.buckets.forEach((bound, i) => {
+    cumulative += metrics.latencyMicros.counts[i] ?? 0;
+    out.push(`krediwall_eval_latency_micros_bucket{le="${bound}"} ${cumulative}`);
+  });
+  cumulative += metrics.latencyMicros.counts[metrics.latencyMicros.buckets.length] ?? 0;
+  out.push(
+    'krediwall_eval_latency_micros_bucket{le="+Inf"} ' + cumulative,
+    `krediwall_eval_latency_micros_sum ${metrics.latencyMicros.sum}`,
+    `krediwall_eval_latency_micros_count ${metrics.evaluated}`,
   );
 
   const statNames = new Set<string>();

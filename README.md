@@ -46,6 +46,50 @@ npm run demo
             100.0% of limit burned via 2 repeat band tickets to unverified terminal  (23 µs)
 ```
 
+## Run it as a service in 30 seconds
+
+```bash
+npm run build
+node examples/reference-gateway.mjs          # http://localhost:8080
+```
+
+```bash
+curl -s http://localhost:8080/v1/evaluate \
+  -H 'content-type: application/json' \
+  -d '{ "txnId":"t-1", "creditLineId":"line-42", "payerVpa":"user@okbank",
+        "payeeVpa":"pos1@ybl", "amountPaise":4999900, "creditLimitPaise":10000000,
+        "timestampMs":1760000000000, "terminalVerified":false }'
+```
+
+(Add `-H 'authorization: Bearer <key>'` once you set `KREDIWALL_API_KEY` —
+the walkthrough covers that in Step 4.)
+
+```jsonc
+{ "verdict": "BLOCK", "degraded": false, "elapsedMicros": 23.4,
+  "hits": [ { "rule": "telemetry.mule-drain", "verdict": "BLOCK",
+              "reason": "100.0% of limit burned via 2 repeat band tickets…",
+              "evidence": { "burnRatio": 1, "repeats": 2, "unverifiedTerminal": 1 } } ],
+  "ruleErrors": [] }
+```
+
+The gateway is configured by environment variables (rules JSON, FRI feed,
+state file, decision log, bearer key) and serves `/healthz`, `/readyz` and
+Prometheus `/metrics`. **Every response carries an `x-request-id`** (echoed
+when you send one), and **the full API contract is `docs/api/openapi.yaml`** —
+import it into Postman, your API gateway, or client codegen.
+
+New here? **[docs/getting-started.md](docs/getting-started.md) walks all of
+it in plain words** — from `npm run demo` to the dashboard, calibration and
+the review trail, one command at a time.
+
+Or bring the whole stack — gateway + Prometheus + a pre-wired Grafana
+dashboard with alerts — up in one command:
+
+```bash
+docker compose -f deploy/docker-compose.yml up --build
+# gateway :8080 (Bearer demo-krediwall-token) · Grafana :3000 (dashboard auto-loads)
+```
+
 ## How a verdict is produced
 
 ```
@@ -57,6 +101,10 @@ npm run demo
  │  FirewallEngine runs rules in order and stops at the first BLOCK           │
  │    • velocity-spike  — too many distinct payees / places inside a window   │
  │    • mule-drain      — repeat tickets burning most of the limit            │
+ │    • first-payee     — payee never seen on this line + large limit fraction│
+ │    • structuring     — repeat tickets clustered just under a band          │
+ │    • dormant-reactivation — a line spending again after a long silence     │
+ │    • odd-hours       — night-band activity on a line with no history there │
  │    • feed-reputation — payee mobile number flagged in a fraud-feed snapshot│
  │    • your own rules  — implement the `Rule` interface                      │
  └──────────────▶  ALLOW | REVIEW | BLOCK  + reasons + elapsedMicros  ────────┘
@@ -88,6 +136,11 @@ packages/
                                                    plus stubs where commercial modules plug in
 examples/demo.mjs       npm run demo
 examples/reference-gateway.mjs   npm run gateway — a complete deployment you can copy
+examples/translate-dip-export.mjs  DIP export → feed snapshot translator template
+tools/replay.mjs        npm run replay    replay a labelled stream, report catch rate / FP / latency
+tools/decisions-report.mjs  summary of a decision log for review teams
+deploy/                 Dockerfile · docker-compose (gateway+Prometheus+Grafana) · k8s manifest · dashboard + alerts
+docs/api/openapi.yaml   the HTTP contract, importable into Postman/gateways/codegen
 benchmarks/run.mjs      npm run bench     latency measurement
 benchmarks/soak.mjs     npm run soak      sustained-load boundedness check
 ```
@@ -117,18 +170,21 @@ createHttpAdapter(adapter).listen(8080);
 
 - No machine-learning scoring, device or behavioural-biometric signals, or consortium data.
 - No case management, alert queue or analyst workflow.
-- The starter thresholds are illustrative; there is no public labelled dataset to tune them on, so calibrate against your own traffic.
+- The starter thresholds are illustrative; there is no public labelled dataset to tune them on, so calibrate against your own traffic — `npm run replay` exists for exactly that (labelled JSONL in, catch rate and false-positive rate out).
 - Fraud feeds are snapshots you supply. DoT's FRI is keyed by **mobile number** and delivered to onboarded stakeholders through the Digital Intelligence Platform; this library does not call any government API. Phone-number VPAs match directly; merchant handles need your `resolveMobile` registry lookup or `vpa`-keyed feed rows — payees matching neither pass through unchecked.
 - Merchant-side signals (MCC risk, terminal reputation) are limited to a verified/unverified flag.
 
 ## Documentation
 
+- [Getting started](docs/getting-started.md) — **the full walkthrough in plain words: run it, query it, feed it, watch it, calibrate it**
 - [Executive summary](docs/executive-summary.md) — one page for risk, fraud and product leads
 - [Problem statement](docs/problem-statement.md) — the threat model and why credit-funded UPI is different
 - [Integration guide](docs/integration-guide.md) — production deployment, restarts, HA, feeds and limits
+- [API contract](docs/api/openapi.yaml) — OpenAPI 3.1 for all gateway endpoints
 - [Feed snapshot format](docs/feed-snapshot-format.md) — the FRI/DIP JSON file the loader accepts
 - [Market opportunity](docs/market-opportunity.md) — volumes, fraud data and timing, with citations
 - [Commercial strategy](docs/commercial-strategy.md) — open-core split and pricing
+- [Publishing](docs/publishing.md) — how `@krediwall/*` reaches npm
 - [Glossary](docs/glossary.md) — CLOU, VPA, PSP, TPAP, FRI, DIP, EWS, FMR and more
 
 ## Project
