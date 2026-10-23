@@ -8,4 +8,90 @@
 </defs>
 <rect width="1600" height="1000" fill="#FFFFFF"/>
 <text x="80" y="70" font-size="36" fill="#0A2540" font-weight="700" text-anchor="start" ><tspan x="80" dy="0">A switch retry never double-counts</tspan></text><line x1="80" y1="104" x2="114" y2="104" stroke="#0EA5A4" stroke-width="4"/><text x="124" y="110" font-size="18" fill="#475569" font-weight="400" text-anchor="start" ><tspan x="124" dy="0">Krediwall path</tspan></text><line x1="330" y1="104" x2="364" y2="104" stroke="#94A3B8" stroke-width="4" stroke-dasharray="6 5"/><text x="374" y="110" font-size="18" fill="#475569" font-weight="400" text-anchor="start" ><tspan x="374" dy="0">skipped on retry</tspan></text><rect x="50" y="150" width="1500" height="215" rx="18" fill="#FAFCFD" stroke="#E2E8F0" stroke-width="1.5"/><rect x="50" y="530" width="1500" height="255" rx="18" fill="#FAFCFD" stroke="#E2E8F0" stroke-width="1.5"/><text x="80" y="188" font-size="22" fill="#0A2540" font-weight="700" text-anchor="start" ><tspan x="80" dy="0">Lane A — first attempt</tspan></text><text x="80" y="568" font-size="22" fill="#0A2540" font-weight="700" text-anchor="start" ><tspan x="80" dy="0">Lane B — retry, same txnId (network timeout, switch resend)</tspan></text><rect x="80" y="235" width="190" height="90" rx="14" fill="#FFFFFF" stroke="#0A2540" stroke-width="2.5"/><text x="175.0" y="275.0" font-size="21" fill="#0A2540" font-weight="700" text-anchor="middle" ><tspan x="175.0" dy="0">payment</tspan><tspan x="175.0" dy="26">switch</tspan></text><circle cx="80" cy="235" r="15" fill="#0A2540"/><text x="80" y="241" font-size="16" fill="#FFFFFF" font-weight="800" text-anchor="middle" ><tspan x="80" dy="0">1</tspan></text><path d="M270,280 L326,280" stroke="#0A2540" stroke-width="2.5" fill="none" marker-end="url(#aN)"/><rect x="330" y="235" width="190" height="90" rx="14" fill="#FFFFFF" stroke="#0EA5A4" stroke-width="2.5"/><text x="425.0" y="288.0" font-size="21" fill="#0B7A79" font-weight="700" text-anchor="middle" ><tspan x="425.0" dy="0">Krediwall</tspan></text><circle cx="330" cy="235" r="15" fill="#0A2540"/><text x="330" y="241" font-size="16" fill="#FFFFFF" font-weight="800" text-anchor="middle" ><tspan x="330" dy="0">2</tspan></text><path d="M520,280 L576,280" stroke="#0EA5A4" stroke-width="2.5" fill="none" marker-end="url(#aT)"/><rect x="580" y="235" width="330" height="90" rx="14" fill="#F0FAFA" stroke="#0EA5A4" stroke-width="2.5"/><circle cx="620" cy="272" r="13" fill="#FFFFFF" stroke="#0EA5A4" stroke-width="2.5"/><path d="M615,272 L619,276 L626,268" stroke="#0EA5A4" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><line x1="633" y1="272" x2="657" y2="272" stroke="#0EA5A4" stroke-width="2"/><circle cx="670" cy="272" r="13" fill="#FFFFFF" stroke="#0EA5A4" stroke-width="2.5"/><path d="M665,272 L669,276 L676,268" stroke="#0EA5A4" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><line x1="683" y1="272" x2="707" y2="272" stroke="#0EA5A4" stroke-width="2"/><circle cx="720" cy="272" r="13" fill="#FFFFFF" stroke="#0EA5A4" stroke-width="2.5"/><path d="M715,272 L719,276 L726,268" stroke="#0EA5A4" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><line x1="733" y1="272" x2="757" y2="272" stroke="#0EA5A4" stroke-width="2"/><circle cx="770" cy="272" r="13" fill="#FFFFFF" stroke="#0EA5A4" stroke-width="2.5"/><path d="M765,272 L769,276 L776,268" stroke="#0EA5A4" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><line x1="783" y1="272" x2="807" y2="272" stroke="#0EA5A4" stroke-width="2"/><circle cx="820" cy="272" r="13" fill="#FFFFFF" stroke="#0EA5A4" stroke-width="2.5"/><path d="M815,272 L819,276 L826,268" stroke="#0EA5A4" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><line x1="833" y1="272" x2="857" y2="272" stroke="#0EA5A4" stroke-width="2"/><circle cx="870" cy="272" r="13" fill="#FFFFFF" stroke="#0EA5A4" stroke-width="2.5"/><path d="M865,272 L869,276 L876,268" stroke="#0EA5A4" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><text x="745" y="310" font-size="18" fill="#0A2540" font-weight="600" text-anchor="middle" ><tspan x="745" dy="0">rule chain</tspan></text><circle cx="580" cy="235" r="15" fill="#0EA5A4"/><text x="580" y="241" font-size="16" fill="#FFFFFF" font-weight="800" text-anchor="middle" ><tspan x="580" dy="0">3</tspan></text><path d="M910,272 L1336,272" stroke="#0EA5A4" stroke-width="2.5" fill="none" marker-end="url(#aT)"/><rect x="1340" y="242" width="180" height="60" rx="10" fill="#0EA5A4"/><text x="1430" y="281" font-size="24" fill="#FFFFFF" font-weight="800" text-anchor="middle" ><tspan x="1430" dy="0">BLOCK</tspan></text><text x="1430" y="332" font-size="17" fill="#475569" font-weight="500" text-anchor="middle" ><tspan x="1430" dy="0">returned to switch</tspan></text><path d="M1130,272 L1130,378" stroke="#0EA5A4" stroke-width="2.5" fill="none" marker-end="url(#aT)"/><text x="1145" y="344" font-size="18" fill="#0B7A79" font-weight="700" text-anchor="start" ><tspan x="1145" dy="0">stored</tspan></text><rect x="990" y="382" width="290" height="124" rx="22" fill="#FFFFFF" stroke="#0EA5A4" stroke-width="3"/><text x="1135" y="418" font-size="21" fill="#0A2540" font-weight="700" text-anchor="middle" ><tspan x="1135" dy="0">dedupe window</tspan></text><rect x="1012" y="436" width="246" height="46" rx="10" fill="#F0FAFA"/><text x="1135" y="466" font-size="17" text-anchor="middle" font-family="'SFMono-Regular', Menlo, Consolas, monospace" xml:space="preserve"><tspan fill="#0A2540">txn-8842</tspan><tspan fill="#475569"> → </tspan><tspan fill="#0B7A79" font-weight="700">BLOCK</tspan></text><rect x="80" y="595" width="190" height="90" rx="14" fill="#FFFFFF" stroke="#0A2540" stroke-width="2.5"/><text x="175.0" y="635.0" font-size="21" fill="#0A2540" font-weight="700" text-anchor="middle" ><tspan x="175.0" dy="0">payment</tspan><tspan x="175.0" dy="26">switch</tspan></text><circle cx="80" cy="595" r="15" fill="#0A2540"/><text x="80" y="601" font-size="16" fill="#FFFFFF" font-weight="800" text-anchor="middle" ><tspan x="80" dy="0">1</tspan></text><path d="M270,640 L326,640" stroke="#0A2540" stroke-width="2.5" fill="none" marker-end="url(#aN)"/><rect x="330" y="595" width="190" height="90" rx="14" fill="#FFFFFF" stroke="#0EA5A4" stroke-width="2.5"/><text x="425.0" y="648.0" font-size="21" fill="#0B7A79" font-weight="700" text-anchor="middle" ><tspan x="425.0" dy="0">Krediwall</tspan></text><circle cx="330" cy="595" r="15" fill="#0A2540"/><text x="330" y="601" font-size="16" fill="#FFFFFF" font-weight="800" text-anchor="middle" ><tspan x="330" dy="0">2</tspan></text><rect x="580" y="595" width="330" height="90" rx="14" fill="#F8FAFC" stroke="#94A3B8" stroke-width="2.5" stroke-dasharray="8 6"/><circle cx="620" cy="632" r="13" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2.5"/><line x1="615" y1="632" x2="625" y2="632" stroke="#94A3B8" stroke-width="2.2"/><line x1="633" y1="632" x2="657" y2="632" stroke="#94A3B8" stroke-width="2"/><circle cx="670" cy="632" r="13" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2.5"/><line x1="665" y1="632" x2="675" y2="632" stroke="#94A3B8" stroke-width="2.2"/><line x1="683" y1="632" x2="707" y2="632" stroke="#94A3B8" stroke-width="2"/><circle cx="720" cy="632" r="13" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2.5"/><line x1="715" y1="632" x2="725" y2="632" stroke="#94A3B8" stroke-width="2.2"/><line x1="733" y1="632" x2="757" y2="632" stroke="#94A3B8" stroke-width="2"/><circle cx="770" cy="632" r="13" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2.5"/><line x1="765" y1="632" x2="775" y2="632" stroke="#94A3B8" stroke-width="2.2"/><line x1="783" y1="632" x2="807" y2="632" stroke="#94A3B8" stroke-width="2"/><circle cx="820" cy="632" r="13" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2.5"/><line x1="815" y1="632" x2="825" y2="632" stroke="#94A3B8" stroke-width="2.2"/><line x1="833" y1="632" x2="857" y2="632" stroke="#94A3B8" stroke-width="2"/><circle cx="870" cy="632" r="13" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2.5"/><line x1="865" y1="632" x2="875" y2="632" stroke="#94A3B8" stroke-width="2.2"/><text x="745" y="670" font-size="18" fill="#94A3B8" font-weight="600" text-anchor="middle" ><tspan x="745" dy="0">rule chain</tspan></text><rect x="928" y="615" width="130" height="34" rx="17" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/><text x="993" y="638" font-size="16" fill="#475569" font-weight="700" text-anchor="middle" ><tspan x="993" dy="0">not re-run</tspan></text><line x1="520" y1="640" x2="572" y2="640" stroke="#94A3B8" stroke-width="2.5" stroke-dasharray="6 5"/><path d="M520,670 L550,670 L550,740 L1135,740 L1135,510" stroke="#0EA5A4" stroke-width="3" fill="none" marker-end="url(#aT)"/><text x="560" y="730" font-size="18" fill="#0B7A79" font-weight="700" text-anchor="start" ><tspan x="560" dy="0">lookup txn-8842 → hit</tspan></text><rect x="830" y="722" width="230" height="36" rx="18" fill="#FFFFFF" stroke="#0A2540" stroke-width="2"/><text x="945" y="746" font-size="17" fill="#0A2540" font-weight="700" text-anchor="middle" ><tspan x="945" dy="0">state not re-counted</tspan></text><path d="M1280,444 L1430,444 L1430,606" stroke="#0EA5A4" stroke-width="3" fill="none" marker-end="url(#aT)"/><rect x="1340" y="610" width="180" height="60" rx="10" fill="#0EA5A4"/><text x="1430" y="649" font-size="24" fill="#FFFFFF" font-weight="800" text-anchor="middle" ><tspan x="1430" dy="0">BLOCK</tspan></text><text x="1430" y="698" font-size="17" fill="#0A2540" font-weight="700" text-anchor="middle" ><tspan x="1430" dy="0">SAME verdict returned</tspan></text><rect x="50" y="815" width="480" height="84" rx="14" fill="#F0FAFA" stroke="#A7E3E2" stroke-width="1.5"/><path d="M72,857 L80,865 L94,849" stroke="#16A34A" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><text x="110" y="850" font-size="19" fill="#0A2540" font-weight="500" text-anchor="start" ><tspan x="110" dy="0">The same ticket never counts twice</tspan><tspan x="110" dy="24">in velocity/burn rules</tspan></text><rect x="560" y="815" width="480" height="84" rx="14" fill="#F0FAFA" stroke="#A7E3E2" stroke-width="1.5"/><path d="M582,857 L590,865 L604,849" stroke="#16A34A" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><text x="620" y="850" font-size="19" fill="#0A2540" font-weight="500" text-anchor="start" ><tspan x="620" dy="0">The dedupe window survives a</tspan><tspan x="620" dy="24">SIGHUP ruleset hot-reload</tspan></text><rect x="1070" y="815" width="480" height="84" rx="14" fill="#F0FAFA" stroke="#A7E3E2" stroke-width="1.5"/><path d="M1092,857 L1100,865 L1114,849" stroke="#16A34A" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><text x="1130" y="850" font-size="19" fill="#0A2540" font-weight="500" text-anchor="start" ><tspan x="1130" dy="0">Deduped responses are counted in</tspan><tspan x="1130" dy="24">/metrics</tspan></text><text x="800" y="952" font-size="17" text-anchor="middle" fill="#475569" xml:space="preserve">bounded FIFO window — capacity set by <tspan font-family="'SFMono-Regular', Menlo, Consolas, monospace">dedupeCapacity</tspan></text>
-</svg>
+<g transform="translate(405,242) scale(0.039)"><title>Krediwall icon concept — Masonry</title>
+  <defs>
+    <!-- THEME: edit these three stops to recolour the tile -->
+    <linearGradient id="kw-bg" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#5B6BE0"/>
+      <stop offset="0.55" stop-color="#24206B"/>
+      <stop offset="1" stop-color="#0A0F2C"/>
+    </linearGradient>
+    <radialGradient id="kw-sheen" cx="0.28" cy="0.08" r="0.85">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="0.6" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="kw-ink" cx="0.35" cy="0.25" r="0.9">
+      <stop offset="0" stop-color="#2A3358"/>
+      <stop offset="0.55" stop-color="#0B1020"/>
+      <stop offset="1" stop-color="#03050C"/>
+    </radialGradient>
+    <linearGradient id="kw-pearl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E9E4FF"/>
+    </linearGradient>
+    <radialGradient id="kw-glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.35" stop-color="#2EF2D9"/>
+      <stop offset="1" stop-color="#2EF2D9" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="kw-shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#0A0A2A" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <g id="kw-background">
+    <rect width="1024" height="1024" rx="230" fill="url(#kw-bg)"/>
+    <rect width="1024" height="1024" rx="230" fill="url(#kw-sheen)"/>
+    <rect x="5" y="5" width="1014" height="1014" rx="225" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="10"/>
+  </g>
+  <g id="kw-mark" filter="url(#kw-shadow)">
+    <rect id="kw-brick-1" x="262" y="282" width="220" height="120" rx="40" fill="url(#kw-pearl)"/>
+    <rect id="kw-brick-2" x="502" y="282" width="260" height="120" rx="40" fill="url(#kw-pearl)"/>
+    <rect id="kw-brick-3" x="262" y="452" width="340" height="120" rx="40" fill="url(#kw-pearl)"/>
+    <rect id="kw-flagged-glow" x="582" y="412" width="220" height="200" rx="80" fill="url(#kw-glow)" opacity="0.8"/>
+    <rect id="kw-brick-flagged" x="622" y="452" width="140" height="120" rx="40" fill="#2EF2D9"/>
+    <rect id="kw-brick-5" x="262" y="622" width="120" height="120" rx="40" fill="url(#kw-pearl)"/>
+    <rect id="kw-brick-6" x="402" y="622" width="360" height="120" rx="40" fill="url(#kw-pearl)"/>
+  </g></g><g transform="translate(405,602) scale(0.039)"><title>Krediwall icon concept — Masonry</title>
+  <defs>
+    <!-- THEME: edit these three stops to recolour the tile -->
+    <linearGradient id="kw-bg" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#5B6BE0"/>
+      <stop offset="0.55" stop-color="#24206B"/>
+      <stop offset="1" stop-color="#0A0F2C"/>
+    </linearGradient>
+    <radialGradient id="kw-sheen" cx="0.28" cy="0.08" r="0.85">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="0.6" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="kw-ink" cx="0.35" cy="0.25" r="0.9">
+      <stop offset="0" stop-color="#2A3358"/>
+      <stop offset="0.55" stop-color="#0B1020"/>
+      <stop offset="1" stop-color="#03050C"/>
+    </radialGradient>
+    <linearGradient id="kw-pearl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E9E4FF"/>
+    </linearGradient>
+    <radialGradient id="kw-glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.35" stop-color="#2EF2D9"/>
+      <stop offset="1" stop-color="#2EF2D9" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="kw-shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#0A0A2A" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <g id="kw-background">
+    <rect width="1024" height="1024" rx="230" fill="url(#kw-bg)"/>
+    <rect width="1024" height="1024" rx="230" fill="url(#kw-sheen)"/>
+    <rect x="5" y="5" width="1014" height="1014" rx="225" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="10"/>
+  </g>
+  <g id="kw-mark" filter="url(#kw-shadow)">
+    <rect id="kw-brick-1" x="262" y="282" width="220" height="120" rx="40" fill="url(#kw-pearl)"/>
+    <rect id="kw-brick-2" x="502" y="282" width="260" height="120" rx="40" fill="url(#kw-pearl)"/>
+    <rect id="kw-brick-3" x="262" y="452" width="340" height="120" rx="40" fill="url(#kw-pearl)"/>
+    <rect id="kw-flagged-glow" x="582" y="412" width="220" height="200" rx="80" fill="url(#kw-glow)" opacity="0.8"/>
+    <rect id="kw-brick-flagged" x="622" y="452" width="140" height="120" rx="40" fill="#2EF2D9"/>
+    <rect id="kw-brick-5" x="262" y="622" width="120" height="120" rx="40" fill="url(#kw-pearl)"/>
+    <rect id="kw-brick-6" x="402" y="622" width="360" height="120" rx="40" fill="url(#kw-pearl)"/>
+  </g></g></svg>
