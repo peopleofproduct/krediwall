@@ -277,8 +277,8 @@ prose. It contains raw identifiers, so it stays inside your perimeter.
   `/healthz`, readiness on `/readyz`, non-root, no CPU limit (don't
   throttle the hot path), persistent volumes where they belong.
 - **In-process instead of HTTP:** the library path is the intended
-  integration — `npm install @krediwall/enterprise-proxy` once published
-  (see [publishing.md](publishing.md)) and call the adapter directly
+  integration — `npm install @krediwall/core @krediwall/telemetry-rules @krediwall/enterprise-proxy`
+  and call the adapter directly
   from your switch, in the same process. Microsecond checks with no
   network hop.
 - **The grown-up manual:** [integration guide](integration-guide.md) —
