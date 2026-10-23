@@ -137,6 +137,7 @@ packages/
 examples/demo.mjs       npm run demo
 examples/reference-gateway.mjs   npm run gateway — a complete deployment you can copy
 examples/translate-dip-export.mjs  DIP export → feed snapshot translator template
+examples/clients/       Java client example (bank switch teams; no dependencies)
 tools/replay.mjs        npm run replay    replay a labelled stream, report catch rate / FP / latency
 tools/decisions-report.mjs  summary of a decision log for review teams
 deploy/                 Dockerfile · docker-compose (gateway+Prometheus+Grafana) · k8s manifest · dashboard + alerts

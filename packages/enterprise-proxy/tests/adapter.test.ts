@@ -31,6 +31,20 @@ describe('KrediwallAdapter', () => {
     );
   });
 
+  it('hot-reloads rules through replaceRules without losing history', () => {
+    const adapter = new KrediwallAdapter([
+      velocitySpike({ maxDistinctMerchants: 5, windowMs: 60_000 }),
+    ]);
+    // Two payees land in the ring under the loose threshold.
+    adapter.handleTransaction(txn({ txnId: 't-1', payeeVpa: 'a@paytm' }));
+    adapter.handleTransaction(txn({ txnId: 't-2', payeeVpa: 'b@paytm' }));
+    // Reload tightens 5 → 1; the two prior payees must carry over.
+    adapter.replaceRules([velocitySpike({ maxDistinctMerchants: 1, windowMs: 60_000 })]);
+    expect(
+      adapter.handleTransaction(txn({ txnId: 't-3', payeeVpa: 'c@paytm' })).verdict,
+    ).toBe(Verdict.Block);
+  });
+
   it('returns unchecked when no graph evaluator is wired in', async () => {
     const adapter = new KrediwallAdapter([]);
     await expect(

@@ -106,6 +106,15 @@ export class KrediwallAdapter {
     return this.meter;
   }
 
+  /**
+   * Hot-reload the ruleset (config changes without a restart). Per-rule
+   * history carries across for rules whose names survive the swap —
+   * see `FirewallEngine.replaceRules`.
+   */
+  replaceRules(rules: readonly Rule[]): void {
+    this.engine.replaceRules(rules);
+  }
+
   /** Lifetime engine counters for observability (see also GET /metrics). */
   metrics(): EngineMetrics {
     return this.engine.metrics;

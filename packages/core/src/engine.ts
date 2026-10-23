@@ -96,7 +96,7 @@ const LATENCY_BUCKETS: readonly number[] = [100, 250, 500, 1_000, 2_500, 5_000, 
  * firing. Measure real latency with `npm run bench`.
  */
 export class FirewallEngine {
-  private readonly rules: readonly Rule[];
+  private rules: readonly Rule[];
   private readonly onEvaluation?: FirewallEngineOptions['onEvaluation'];
   private readonly onRuleError?: FirewallEngineOptions['onRuleError'];
   private evaluated = 0;
@@ -247,6 +247,33 @@ export class FirewallEngine {
       }
     }
     return evaluation;
+  }
+
+  /**
+   * Swap the ruleset live (config hot-reload) without losing per-line
+   * history: for each new rule, a replaced rule with the *same name*
+   * exports its state into the new instance. A rule whose name or shape
+   * changed starts cold — warm-up cost is one `windowMs` per affected
+   * rule. The dedupe window survives the swap so switch retries keep
+   * getting their original verdicts. Rules dropped from the new set
+   * stop firing immediately.
+   */
+  replaceRules(rules: readonly Rule[]): void {
+    const old = new Map(this.rules.map((r) => [r.name, r] as const));
+    for (const rule of rules) {
+      const state = old.get(rule.name)?.exportState?.();
+      if (state !== undefined) rule.restoreState?.(state);
+    }
+    this.rules = rules.slice();
+    // Lifetime counters of dropped rules leave the metrics; new rules
+    // register themselves on first firing.
+    const names = new Set(rules.map((r) => r.name));
+    for (const name of [...this.hitCounts.keys()]) {
+      if (!names.has(name)) this.hitCounts.delete(name);
+    }
+    for (const name of [...this.errorCounts.keys()]) {
+      if (!names.has(name)) this.errorCounts.delete(name);
+    }
   }
 
   /**

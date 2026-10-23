@@ -233,7 +233,11 @@ transaction.
 
 - Produce `fri-latest.json` (format above) from your DIP/FRI feed on your
   own cadence, then `loadFriSnapshotFile` on a refresh loop or on file
-  change. `examples/translate-dip-export.mjs` converts the common export
+  change. In the reference gateway, set `KREDIWALL_FRI_REFRESH_MS` and the
+  snapshot re-loads on that cadence into the *same* feed instance — a
+  failed refresh keeps serving the previous contents and surfaces on
+  `/readyz`, so a bad or late delivery degrades coverage without blanking
+  the watchlist. `examples/translate-dip-export.mjs` converts the common export
   shapes (CSV, JSON array, NDJSON) into the snapshot format — adapt its
   column guesses to your delivery. Keyed-HMAC digests: keep `FRI_HMAC_KEY`
   in a secret store, and rotate by ingesting with the new key (lookups
@@ -246,6 +250,30 @@ transaction.
   handles to their onboarding mobile from your own registry, and/or ship
   `vpa`-keyed rows in the snapshot for feeds that identify mule accounts
   directly (see `docs/feed-snapshot-format.md`).
+
+## Threshold changes without a restart
+
+`SIGHUP` the reference gateway and it re-reads the ruleset config and
+refreshes the feed in place. Two properties matter for a bank rollout:
+
+- **History survives.** The engine carries per-line state across the swap
+  for every rule whose *name* is unchanged (`FirewallEngine.replaceRules`)
+  — tightening `maxDistinctMerchants` from 1000 to 1 does not restart
+  fraud history; the line that already drew three payees this minute
+  blocks on the next evaluation, not after re-warming.
+- **A bad config never takes the gateway down.** If the new file fails
+  validation, the old ruleset keeps serving and the error is logged —
+  a typo at 2am cannot silently un-deploy your fraud controls. The dedupe
+  window also survives, so switch retries keep getting their original
+  verdicts across a reload.
+
+```bash
+kill -HUP $(pgrep -f reference-gateway)
+```
+
+Rule *names* are the stability contract: keep them constant across
+threshold changes (the config loader does this by construction), or the
+renamed rule starts cold.
 
 ## Limits you should know
 

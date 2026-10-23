@@ -37,3 +37,69 @@ jobs:
       - run: npm run build
       - name: Latency smoke
         run: node benchmarks/run.mjs --txns=200000 --lines=20000 --warmup=50000
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate the compose stack parses
+        run: docker compose -f deploy/docker-compose.yml config -q
+      - name: Build the gateway image
+        run: docker build -f deploy/Dockerfile -t krediwall:ci .
+      - name: Boot with feed+rules, then exercise auth, hot-reload and auto-refresh
+        run: |
+          mkdir -p ci-tmp
+          now=$(date +%s000)
+          # Fresh snapshot, one medium-risk number; the listed row is added later
+          # via SIGHUP, and a second row after that via the auto-refresh loop.
+          printf '{"version":1,"generatedAtMs":%s,"entries":[{"mobile":"9111111111","riskScore":0.5}]}' "$now" > ci-tmp/fri.json
+          # Very loose velocity limit: 1000 distinct payees. Tightened via SIGHUP below.
+          printf '{"version":1,"velocitySpike":{"maxDistinctMerchants":1000,"windowMs":60000}}' > ci-tmp/rules.json
+          docker run -d --name kw -p 18080:8080 \
+            -v "$(pwd)/ci-tmp:/etc/krediwall:ro" \
+            -e KREDIWALL_API_KEY=ci-token \
+            -e KREDIWALL_FRI_SNAPSHOT=/etc/krediwall/fri.json \
+            -e KREDIWALL_FRI_HMAC_KEY=ci-key \
+            -e KREDIWALL_FRI_REFRESH_MS=2000 \
+            -e KREDIWALL_RULES_CONFIG=/etc/krediwall/rules.json \
+            krediwall:ci
+          sleep 3
+          fire() { # evaluate one txn and print the verdict
+            curl -s -X POST http://127.0.0.1:18080/v1/evaluate \
+              -H 'content-type: application/json' -H 'authorization: Bearer ci-token' \
+              -d "{\"txnId\":\"$1\",\"creditLineId\":\"l-1\",\"payerVpa\":\"u@okb\",\"payeeVpa\":\"$2\",\"amountPaise\":100000,\"creditLimitPaise\":10000000,\"timestampMs\":1760000000000,\"terminalVerified\":true}"
+          }
+          # Auth gate: no token → 401, probes stay open.
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:18080/v1/evaluate -H 'content-type: application/json' -d '{"txnId":"x"}')" = "401"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/readyz)" = "200"
+          # Unlisted payee on a loose ruleset → ALLOW.
+          fire t-1 9876543210@ybl | grep -q '"verdict":"ALLOW"'
+          # Hot-reload the feed (SIGHUP): the listed row must now BLOCK.
+          printf '{"version":1,"generatedAtMs":%s,"entries":[{"mobile":"9876543210","listed":true}]}' "$now" > ci-tmp/fri.json
+          docker kill --signal=SIGHUP kw; sleep 2
+          fire t-2 9876543210@ybl | grep -q '"verdict":"BLOCK"'
+          # Hot-reload the ruleset (SIGHUP): tightened velocity → 2 payees BLOCK.
+          printf '{"version":1,"velocitySpike":{"maxDistinctMerchants":1,"windowMs":60000}}' > ci-tmp/rules.json
+          docker kill --signal=SIGHUP kw; sleep 2
+          fire t-3 a@ybl > /dev/null
+          fire t-4 b@ybl | grep -q '"verdict":"BLOCK"'
+          # Auto-refresh loop (no SIGHUP): a new listed row is picked up within
+          # one KREDIWALL_FRI_REFRESH_MS cycle.
+          printf '{"version":1,"generatedAtMs":%s,"entries":[{"mobile":"9222222222","listed":true}]}' "$now" > ci-tmp/fri.json
+          sleep 4
+          fire t-5 9222222222@ybl | grep -q '"verdict":"BLOCK"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/readyz)" = "200"
+          docker rm -f kw
+
+  java-client:
+    runs-on: ubuntu-latest
+    # Keeps the Java example compiling; it has no runtime to test against here.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: javac examples/clients/EvaluateExample.java
+
+
