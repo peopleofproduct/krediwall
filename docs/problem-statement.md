@@ -94,6 +94,8 @@ payer app → PSP / lender switch → [ KREDIWALL: in-process verdict ] → NPCI
 
 ## 3. The attack vectors Krediwall targets
 
+![Six fraud patterns on credit-funded UPI — and the signal that sees each one](assets/threat-patterns.svg)
+
 ### 3.1 Velocity spike / mule fanout
 A freshly approved credit line fires spend at many distinct payee VPAs — or
 across geographically inconsistent cells — inside tens of seconds.

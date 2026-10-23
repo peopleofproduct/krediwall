@@ -9,3 +9,6 @@ coverage/
 
 # npm auth tokens must never be committed
 .npmrc
+
+# local-only asset generation prompts (not published)
+docs/assets/PROMPTS.md

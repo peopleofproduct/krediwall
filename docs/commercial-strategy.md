@@ -5,6 +5,8 @@
 
 ## 1. The open-core split
 
+![Open core versus commercial modules, with the stable public contract seams between them](assets/open-core.svg)
+
 ```
 ┌──────────────────────────────────────────┐    ┌──────────────────────────────────────────┐
 │   OPEN CORE (Apache-2.0, in this repo)   │    │   COMMERCIAL MODULES (not in this repo)  │

@@ -9,6 +9,8 @@ actually means. If you read nothing else, the one-line version is:
 > and answers one of three words: **ALLOW** (fine), **REVIEW** (send to
 > a human), **BLOCK** (stop it).
 
+![The nine-step path from npm install to first verdict — install, demo, gateway, first API verdict, API key, FRI feed, dashboard, replay, decision report](assets/day-one.svg)
+
 ---
 
 ## Step 0 — What you need
@@ -247,6 +249,8 @@ every false block is a customer saying "why was my payment rejected?"
 again, compare. That loop — traffic, labels, thresholds, repeat — is
 how the starter defaults become *your* tuned numbers. Never trust a
 BLOCK rate you haven't replayed.
+
+![Calibrating to your traffic — stricter thresholds raise both catch rate and false-positive rate; replay on labelled traffic finds your operating point](assets/calibration-curve.svg)
 
 ---
 
