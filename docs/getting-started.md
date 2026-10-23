@@ -170,7 +170,10 @@ node examples/reference-gateway.mjs
 now get REVIEW or BLOCK automatically. Numbers are stored as keyed
 HMAC digests — a fingerprint, not the number itself. If the file gets
 old (stale), `/readyz` starts answering 503 so your load balancer knows
-coverage is degraded, instead of silently trusting a dead list.
+coverage is degraded, instead of silently trusting a dead list. Set
+`KREDIWALL_FRI_REFRESH_MS` and the gateway re-loads the snapshot file on
+that cadence — if a refresh fails (bad file, upstream hiccup), it keeps
+serving the *previous* snapshot and says so on `/readyz`.
 
 Merchant VPAs that aren't phone numbers (`shop42@paytm`) can't be
 checked against a mobile-keyed feed by themselves — give the gateway
@@ -276,11 +279,16 @@ prose. It contains raw identifiers, so it stays inside your perimeter.
 - **Kubernetes:** `deploy/k8s.yaml` is the reference shape — liveness on
   `/healthz`, readiness on `/readyz`, non-root, no CPU limit (don't
   throttle the hot path), persistent volumes where they belong.
+- **Change thresholds without a restart:** edit the rules JSON and
+  `kill -HUP` the gateway. Per-line fraud history survives the reload
+  (rule names are the stable key), and a bad config file is ignored —
+  the running ruleset keeps serving until you fix it.
 - **In-process instead of HTTP:** the library path is the intended
   integration — `npm install @krediwall/core @krediwall/telemetry-rules @krediwall/enterprise-proxy`
   and call the adapter directly
   from your switch, in the same process. Microsecond checks with no
-  network hop.
+  network hop. Bank switch teams in Java: `examples/clients/EvaluateExample.java`
+  is a complete, dependency-free client.
 - **The grown-up manual:** [integration guide](integration-guide.md) —
   deployment shapes, restarts/HA, feed operations, and the honest
   limits table. [API contract](api/openapi.yaml) for your gateway and

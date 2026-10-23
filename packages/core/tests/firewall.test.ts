@@ -301,3 +301,67 @@ describe('FirewallEngine dedupe and latency', () => {
     expect(m.buckets.length).toBe(m.counts.length - 1); // last count is +Inf
   });
 });
+
+describe('FirewallEngine.replaceRules (hot reload)', () => {
+  // A stateful rule with export/restore: counts distinct payees per line
+  // and fires when the count exceeds `max`.
+  const payeeCounter = (name: string, max: number): Rule => {
+    const seen = new Map<string, Set<string>>();
+    return {
+      name,
+      evaluate(t) {
+        const set = seen.get(t.creditLineId) ?? new Set<string>();
+        set.add(t.payeeVpa);
+        seen.set(t.creditLineId, set);
+        return set.size > max
+          ? { rule: name, verdict: Verdict.Block, reason: `${set.size} distinct payees` }
+          : null;
+      },
+      exportState: () => [...seen].map(([line, vpas]) => [line, [...vpas]]),
+      restoreState(state: unknown) {
+        seen.clear();
+        for (const [line, vpas] of state as Array<[string, string[]]>) {
+          seen.set(line, new Set(vpas));
+        }
+      },
+    };
+  };
+
+  it('carries per-line history across a reload for same-named rules', () => {
+    const engine = new FirewallEngine([payeeCounter('payees', 5)], {
+      dedupeCapacity: 100,
+    });
+    for (let i = 1; i <= 3; i++) {
+      engine.evaluate(txn({ txnId: `t-${i}`, payeeVpa: `p${i}@ybl` }));
+    }
+    // Hot reload tightens the threshold 5 → 3; the three prior payees
+    // must survive, so the next distinct payee blocks immediately.
+    engine.replaceRules([payeeCounter('payees', 3)]);
+    const result = engine.evaluate(txn({ txnId: 't-4', payeeVpa: 'p4@ybl' }));
+    expect(result.verdict).toBe(Verdict.Block);
+  });
+
+  it('starts a renamed rule cold and drops rules absent from the new set', () => {
+    const engine = new FirewallEngine([payeeCounter('payees', 1)]);
+    engine.evaluate(txn({ txnId: 't-1', payeeVpa: 'p1@ybl' }));
+    // Same rule under a new name: nothing carries, nothing fires yet.
+    engine.replaceRules([payeeCounter('payees.tight', 1)]);
+    expect(engine.evaluate(txn({ txnId: 't-2', payeeVpa: 'p2@ybl' })).verdict).toBe(
+      Verdict.Allow,
+    );
+    expect(engine.metrics.ruleHits).not.toHaveProperty('payees');
+    // A rule dropped from the new set stops firing and leaves metrics.
+    engine.replaceRules([verdictRule('still.there', Verdict.Block, true)]);
+    expect(engine.evaluate(txn({ txnId: 't-3' })).verdict).toBe(Verdict.Block);
+    expect(engine.metrics.ruleHits).not.toHaveProperty('payees.tight');
+  });
+
+  it('keeps the dedupe window across a reload — retries still get the original verdict', () => {
+    const engine = new FirewallEngine([payeeCounter('payees', 0)], { dedupeCapacity: 100 });
+    const first = engine.evaluate(txn({ txnId: 'dup', payeeVpa: 'p1@ybl' }));
+    engine.replaceRules([]); // rule gone entirely
+    const retry = engine.evaluate(txn({ txnId: 'dup', payeeVpa: 'p1@ybl' }));
+    expect(retry).toBe(first); // original BLOCK stands, not re-evaluated to ALLOW
+    expect(engine.metrics.deduped).toBe(1);
+  });
+});

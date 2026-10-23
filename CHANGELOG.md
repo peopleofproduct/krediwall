@@ -86,6 +86,27 @@ velocity-spike scenario and get a BLOCK verdict with structured
 evidence. `.npmrc` added to `.gitignore` so local publish tokens can
 never be committed.
 
+## Unreleased — operational completeness
+
+### Added
+
+- **Feed auto-refresh** — `KREDIWALL_FRI_REFRESH_MS` re-loads the FRI
+  snapshot into the same feed instance on a cadence; a failed refresh
+  keeps serving the previous snapshot and surfaces on `/readyz`, so a
+  bad delivery degrades coverage instead of blanking the watchlist.
+- **Threshold hot-reload** — `SIGHUP` re-reads the ruleset config and
+  refreshes the feed without a restart. `FirewallEngine.replaceRules`
+  (and `KrediwallAdapter.replaceRules`) carry per-line history across
+  the swap for same-named rules; a config that fails validation is
+  ignored and the running ruleset keeps serving; the dedupe window
+  survives the swap. Verified live: tightened velocity blocks on the
+  next evaluation using pre-reload history.
+- **Java client example** — `examples/clients/EvaluateExample.java`,
+  zero dependencies (java.net.http), compile-checked in CI.
+- **CI docker job** — builds the gateway image, validates the compose
+  stack, then exercises auth, feed SIGHUP hot-reload, ruleset SIGHUP
+  hot-reload and the auto-refresh loop end to end in a container.
+
 ## 0.1.0 — first tagged state
 
 - Core engine with rule-order evaluation, first-BLOCK short-circuit,
