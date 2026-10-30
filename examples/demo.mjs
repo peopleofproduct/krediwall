@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 // Run with: npm run demo   (builds first, then replays three scenarios)
 import { createRequire } from 'node:module';
 

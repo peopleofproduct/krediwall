@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 // Run with: npm run bench   (builds first)
 //
 // Measures per-call latency of FirewallEngine.evaluate() with the starter rule

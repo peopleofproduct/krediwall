@@ -4,6 +4,11 @@ How a lender or PSP embeds the engine, what breaks and what stays true.
 The threat model is in [problem-statement.md](problem-statement.md); feed
 files are in [feed-snapshot-format.md](feed-snapshot-format.md).
 
+> **Planning a production evaluation or pilot?** Write to
+> **kapil@theproduct.city** before you start — the maintainers will help
+> you structure it, review the deployment shape and support the
+> integration directly. Voluntary, never a licence condition.
+
 ## Where it sits
 
 Three deployment shapes, one engine:

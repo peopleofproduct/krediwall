@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 import type { Verdict } from '@krediwall/core';
 
 /** A rule firing that may constitute a reportable fraud / cyber incident. */

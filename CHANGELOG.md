@@ -5,6 +5,15 @@ versions may break APIs until a 1.0 is cut.
 
 ## Unreleased
 
+### Added
+
+- SPDX licence and copyright headers on every source file.
+- Maintainer contact (`kapil@theproduct.city`) in the README,
+  getting-started, integration guide, ADOPTERS, SECURITY and
+  TRADEMARKS — an invitation to write before a pilot or production
+  evaluation so the maintainers can support it. Voluntary, never a
+  licence condition.
+
 ### Changed
 
 - Brand icon switched to the black masonry variant; the embeds in

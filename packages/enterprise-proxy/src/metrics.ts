@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 import type { EngineMetrics } from '@krediwall/core';
 
 const esc = (label: string): string =>

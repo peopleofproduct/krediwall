@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 // Reference deployment: a complete, copyable Krediwall gateway.
 //
 //   npm run build && node examples/reference-gateway.mjs

@@ -6,8 +6,8 @@ disclosure, and we don't track usage (the engine makes no outbound
 calls, ever).
 
 If you use Krediwall, we'd love to list you. Open a PR editing the
-table below, or email the maintainers, at whichever disclosure level
-you're comfortable with:
+table below, or email **kapil@theproduct.city**, at whichever
+disclosure level you're comfortable with:
 
 | Level | What we may show |
 |---|---|

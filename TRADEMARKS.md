@@ -44,4 +44,6 @@ it is never implied by adoption or by the badge.
 
 ## Questions
 
-Open a GitHub issue. This policy may be updated as the project matures.
+Open a GitHub issue, or email **kapil@theproduct.city** for
+permission and licensing questions. This policy may be updated as
+the project matures.

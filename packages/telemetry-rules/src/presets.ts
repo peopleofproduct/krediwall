@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 import type { Rule } from '@krediwall/core';
 import { dormantReactivation } from './dormant';
 import { firstPayee } from './firstPayee';

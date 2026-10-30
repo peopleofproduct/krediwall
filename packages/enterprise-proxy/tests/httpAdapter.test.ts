@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Transaction } from '@krediwall/core';

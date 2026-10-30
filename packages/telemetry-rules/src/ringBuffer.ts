@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 /**
  * Fixed-capacity ring of (timestamp, aux) numeric pairs backed by typed
  * arrays. Used by velocity heuristics to keep per-entity history bounded so

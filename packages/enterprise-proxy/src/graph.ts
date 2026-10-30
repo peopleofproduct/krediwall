@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 /**
  * Contract for the commercial multi-hop mule-ring scorer.
  *

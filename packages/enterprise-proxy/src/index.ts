@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 export { BillingMeter, KrediwallAdapter } from './krediwallAdapter';
 export type {
   GraphVerdict,
