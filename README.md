@@ -275,6 +275,7 @@ Krediwall is open-core: the engine, rules, feed adapter, gateway and deployment 
 ## Project
 
 - [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [Trademarks](TRADEMARKS.md) · [NOTICE](NOTICE) · [Changelog](CHANGELOG.md)
+- **Evaluating for a pilot or production?** Tell us before you start — **kapil@theproduct.city**. We'll help you scope the evaluation, replay your traffic and answer integration questions directly. Voluntary, never a licence condition — it just gets you support faster.
 - **Running Krediwall in production?** [List yourself in ADOPTERS.md](ADOPTERS.md) and check the [brand kit](docs/brand-kit.md) for the "Secured by Krediwall" badge — both voluntary, both revocable, never tied to the licence.
 - *Naming:* **Panini** is the umbrella for People of Product's open-source work for India's digital public infrastructure (see the sibling Panini project). **Krediwall** is this product.
 

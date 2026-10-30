@@ -12,6 +12,9 @@ Use GitHub's private vulnerability reporting for this repository (**Security →
 - reproduction steps or a proof of concept;
 - impact assessment (for example: a way to evade a rule, crash the engine, exhaust memory, or leak identifiers).
 
+If you cannot use private vulnerability reporting, email
+**kapil@theproduct.city** with the same details.
+
 We aim to acknowledge reports within 72 hours and will coordinate disclosure with you before publishing an advisory.
 
 ## Supported versions

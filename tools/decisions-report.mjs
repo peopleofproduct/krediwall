@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 // Review summary over a decision log produced by the reference gateway
 // (KREDIWALL_DECISION_LOG): per-rule firings, verdict mix, latency, the
 // degraded/error rows an analyst must look at first, and the top BLOCKed

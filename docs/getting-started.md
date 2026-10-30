@@ -302,3 +302,9 @@ prose. It contains raw identifiers, so it stays inside your perimeter.
 (Step 7) before trusting BLOCK rates, size `maxTrackedLines` to your
 line population, wire the audit hook to your own queue, and keep the
 feed fresh on your pipeline's cadence.
+
+**Evaluating this for a real pilot or production?** Write to
+**kapil@theproduct.city** before you start — the maintainers will
+help you scope the evaluation, replay your traffic and review the
+deployment shape. It's voluntary and never a licence condition; it
+just gets you support faster.

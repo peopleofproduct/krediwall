@@ -3,11 +3,12 @@
   "version": "0.2.1",
   "description": "Framework-neutral adapter that embeds the Krediwall engine in a payment-processor switch pipeline, with hooks for commercial graph/billing features.",
   "license": "Apache-2.0",
-  "author": "Kapil",
+  "author": "Kapil <kapil@theproduct.city>",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "NOTICE"
   ],
   "publishConfig": {
     "access": "public"
@@ -26,5 +27,20 @@
     "directory": "packages/enterprise-proxy"
   },
   "homepage": "https://github.com/peopleofproduct/krediwall#readme",
-  "bugs": "https://github.com/peopleofproduct/krediwall/issues"
+  "bugs": {
+    "url": "https://github.com/peopleofproduct/krediwall/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "krediwall",
+    "upi",
+    "fraud",
+    "payment-switch",
+    "psp",
+    "fintech",
+    "adapter",
+    "india"
+  ]
 }

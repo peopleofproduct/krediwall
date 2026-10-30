@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 /**
  * FNV-1a 32-bit hash of a string, returned as a number.
  *

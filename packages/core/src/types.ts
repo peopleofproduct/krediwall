@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 /** Decision returned by the firewall for a single authorization attempt. */
 export enum Verdict {
   Allow = 'ALLOW',

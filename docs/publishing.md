@@ -13,10 +13,15 @@ npm run publish:check # npm pack dry-run per package — inspect the file list
 
 `publish:check` runs `npm publish --workspaces --dry-run`, which packs each
 package without touching the registry. Read each tarball's file list: it
-must contain `dist/**`, `package.json`, `README.md` and `LICENSE`, and
-nothing else (`files: ["dist"]` keeps source out; npm always adds the
-README, licence and package manifest). Each package's `prepublishOnly`
-re-compiles as a final guard.
+must contain `dist/**`, `package.json`, `README.md`, `LICENSE` and
+`NOTICE`, and nothing else (`files: ["dist", "NOTICE"]` keeps source out;
+npm always adds the README, licence and package manifest). Each package's
+`prepublishOnly` re-compiles as a final guard.
+
+**Always pack from a clean build.** `tsc -b` is incremental — deleted
+source files leave stale artifacts in `dist/` that would ship in the
+tarball. Before publishing: `find . -name "*.tsbuildinfo" -not -path
+"*/node_modules/*" -delete && rm -rf packages/*/dist && npm run build`.
 
 ## Versions
 

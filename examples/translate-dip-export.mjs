@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 // DIP/FRI export translator — template for the one integrator-side piece.
 //
 //   node examples/translate-dip-export.mjs --input dip.csv --output fri-latest.json

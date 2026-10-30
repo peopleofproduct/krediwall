@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 import { readFileSync } from 'node:fs';
 import type { Rule } from '@krediwall/core';
 import { Verdict } from '@krediwall/core';

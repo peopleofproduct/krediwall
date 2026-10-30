@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 // Run with: npm run soak   (builds first)
 //
 // Sustained-load check that rule state stays bounded over time: runs

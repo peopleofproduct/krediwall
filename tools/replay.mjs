@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 // Labelled-stream replay — how a bank evaluates (and calibrates) Krediwall.
 //
 //   npm run replay -- --input=stream.jsonl [--rules=rules.json]

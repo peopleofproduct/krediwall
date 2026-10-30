@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 export { RingBuffer } from './ringBuffer';
 export { LruMap } from './lruMap';
 export { hashVpa } from './vpaHash';

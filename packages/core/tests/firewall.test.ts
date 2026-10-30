@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Kapil — People of Product
+
 import { FirewallEngine } from '../src/engine';
 import type { Rule, RuleHit, Transaction } from '../src/types';
 import { Verdict } from '../src/types';
