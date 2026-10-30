@@ -3,37 +3,31 @@
 All notable changes to Krediwall. The project is pre-1.0 alpha; minor
 versions may break APIs until a 1.0 is cut.
 
-## Unreleased
+## 0.2.2 — public launch
+
+The repository is now public. This release carries the launch-readiness
+work: licence hygiene, adopter attribution programme, brand identity and
+the visual documentation set.
 
 ### Added
 
-- SPDX licence and copyright headers on every source file.
+- SPDX licence and copyright headers on every source file, so
+  file-level copying carries attribution.
 - Maintainer contact (`kapil@theproduct.city`) in the README,
   getting-started, integration guide, ADOPTERS, SECURITY and
   TRADEMARKS — an invitation to write before a pilot or production
   evaluation so the maintainers can support it. Voluntary, never a
   licence condition.
-
-### Changed
-
-- Brand icon switched to the black masonry variant; the embeds in
-  `before-after.svg`, `dedupe-retry.svg` and `feed-lifecycle.svg`
-  recoloured to match.
-
-## Unreleased — brand identity
-
-### Added
-
-- **Brand icon** at `docs/assets/krediwall-icon.svg` — the masonry
-  wall with one flagged brick — shown at the top of the README and
-  embedded in the before/after, dedupe-retry and feed-lifecycle
+- **`NOTICE` ships in every package tarball** — Apache-2.0 §4(d)
+  requires it in redistributions; `files: ["dist", "NOTICE"]` keeps it
+  in while keeping sources out.
+- Package metadata on all four packages: `engines.node >=18`,
+  keywords for npm search, `author`, `bugs` and `homepage`.
+- **Brand icon** at `docs/assets/krediwall-icon.svg` — the black
+  masonry wall with one flagged brick — shown at the top of the README
+  and embedded in the before/after, dedupe-retry and feed-lifecycle
   visuals. Referenced from `docs/brand-kit.md`, which still notes the
   "Secured by Krediwall" badge lockup is a separate design to come.
-
-## Unreleased — visual architecture
-
-### Added
-
 - **Mermaid diagrams, reviewable as code** (GitHub renders them natively):
   system-context map in the README (every stakeholder: payment path,
   credit signals, feed pipeline, audit trail, regulators as context),
@@ -50,23 +44,6 @@ versions may break APIs until a 1.0 is cut.
   (README), switch-retry dedupe (architecture), threshold calibration
   trade-off (getting started), and the feed-freshness lifecycle with
   the degraded path (integration guide + feed format doc).
-- **Private visual prompts** — delivered outside the repository
-  (`~/apps/krediwall-internal/`): stakeholder value map, value
-  quantification (real pricing — internal only), pilot-on-a-page,
-  competitive positioning, adoption funnel with the attribution loop,
-  internal roadmap. Never committed.
-
-### Fixed
-
-- The integration guide no longer claims the gateway has "no
-  authentication" — bearer auth (`KREDIWALL_API_KEY`) shipped with the
-  first release; the guide now shows it and keeps the honest note that
-  the gateway terminates no TLS.
-
-## Unreleased — adoption & attribution program
-
-### Added
-
 - **`ADOPTERS.md`** — voluntary, tiered adopter listing (name only /
   name + logo / case study), revocable at any time; Apache-2.0
   requires no disclosure and the engine does no usage tracking.
@@ -85,11 +62,24 @@ versions may break APIs until a 1.0 is cut.
 
 ### Changed
 
+- Brand icon switched to the black masonry variant; the embeds in
+  `before-after.svg`, `dedupe-retry.svg` and `feed-lifecycle.svg`
+  recoloured to match.
 - Pricing figures removed from `docs/commercial-strategy.md` — the tier
   structure stays public, specific prices don't; published ceilings
   anchor negotiations.
 - `SECURITY.md` no longer says the project is unpublished (npm packages
   are live).
+- `docs/publishing.md` now documents the clean-build step before
+  packing — incremental `tsc -b` had left a deleted source's compiled
+  artifact in `dist/` which would have shipped in the tarball.
+
+### Fixed
+
+- The integration guide no longer claims the gateway has "no
+  authentication" — bearer auth (`KREDIWALL_API_KEY`) shipped with the
+  first release; the guide now shows it and keeps the honest note that
+  the gateway terminates no TLS.
 
 ## 0.2.1 — npm ↔ GitHub linkage
 

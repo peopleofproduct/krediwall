@@ -1,6 +1,6 @@
 {
   "name": "@krediwall/enterprise-proxy",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Framework-neutral adapter that embeds the Krediwall engine in a payment-processor switch pipeline, with hooks for commercial graph/billing features.",
   "license": "Apache-2.0",
   "author": "Kapil <kapil@theproduct.city>",
@@ -18,8 +18,8 @@
     "prepublishOnly": "tsc -b"
   },
   "dependencies": {
-    "@krediwall/core": "0.2.1",
-    "@krediwall/telemetry-rules": "0.2.1"
+    "@krediwall/core": "0.2.2",
+    "@krediwall/telemetry-rules": "0.2.2"
   },
   "repository": {
     "type": "git",

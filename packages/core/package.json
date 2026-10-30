@@ -1,6 +1,6 @@
 {
   "name": "@krediwall/core",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Core evaluation loop and verdict state machine for the Krediwall Credit-on-UPI fraud firewall.",
   "license": "Apache-2.0",
   "author": "Kapil <kapil@theproduct.city>",
