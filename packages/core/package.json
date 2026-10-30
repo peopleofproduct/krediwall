@@ -3,11 +3,12 @@
   "version": "0.2.1",
   "description": "Core evaluation loop and verdict state machine for the Krediwall Credit-on-UPI fraud firewall.",
   "license": "Apache-2.0",
-  "author": "Kapil",
+  "author": "Kapil <kapil@theproduct.city>",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "NOTICE"
   ],
   "publishConfig": {
     "access": "public"
@@ -22,5 +23,21 @@
     "directory": "packages/core"
   },
   "homepage": "https://github.com/peopleofproduct/krediwall#readme",
-  "bugs": "https://github.com/peopleofproduct/krediwall/issues"
+  "bugs": {
+    "url": "https://github.com/peopleofproduct/krediwall/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "krediwall",
+    "upi",
+    "fraud",
+    "credit-line",
+    "clou",
+    "fintech",
+    "firewall",
+    "verdict-engine",
+    "india"
+  ]
 }
