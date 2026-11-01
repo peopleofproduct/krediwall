@@ -252,6 +252,7 @@ flowchart LR
 - The starter thresholds are illustrative; there is no public labelled dataset to tune them on, so calibrate against your own traffic — `npm run replay` exists for exactly that (labelled JSONL in, catch rate and false-positive rate out).
 - Fraud feeds are snapshots you supply. DoT's FRI is keyed by **mobile number** and delivered to onboarded stakeholders through the Digital Intelligence Platform; this library does not call any government API. Phone-number VPAs match directly; merchant handles need your `resolveMobile` registry lookup or `vpa`-keyed feed rows — payees matching neither pass through unchecked.
 - Merchant-side signals (MCC risk, terminal reputation) are limited to a verified/unverified flag.
+- It does not replace shared, national fraud-intelligence rails — NPCI's score or RBI's **Digital Payments Intelligence Platform (DPIP)**. Those answer "who is risky" across institutions; Krediwall answers "what is this transaction doing to this credit line" inside one lender's perimeter — and a DPIP-style risk score is a candidate feed *input*, not a competitor. The comparison: [market context](docs/market-opportunity.md).
 
 Krediwall is open-core: the engine, rules, feed adapter, gateway and deployment assets here are Apache-2.0; commercial modules (graph scoring, automated compliance reporters, managed feed ingestion) plug into stable public interfaces and live outside this repository — the split and rationale are in [commercial strategy](docs/commercial-strategy.md).
 
