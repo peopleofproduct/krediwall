@@ -3,6 +3,15 @@
 All notable changes to Krediwall. The project is pre-1.0 alpha; minor
 versions may break APIs until a 1.0 is cut.
 
+## Unreleased
+
+### Added
+
+- `docs/market-opportunity.md`: the September 2026 DPIP Smart
+  Registry launch and a "How Krediwall relates to DPIP" comparison —
+  shared entity-intelligence layer versus lender-side credit-context
+  decision layer. README "does not do" section points to it.
+
 ## 0.2.2 — public launch
 
 The repository is now public. This release carries the launch-readiness

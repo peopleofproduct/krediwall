@@ -47,8 +47,28 @@ Most fraud products must *convince* institutions to consume threat intelligence.
 - **Chakshu** (March 2024) put citizen-reported fraudulent communication onto a national platform; the Digital Intelligence Platform it connects to now has ~1,200 organisations onboarded. [14]
 - **I4C's suspect registry** (Sept 2024) institutionalised mule-account sharing between banks. [9]
 - **April 2026 — RBI discussion paper** *"Exploring safeguards in digital payments to curb frauds"* frames the problem as Authorised Push Payment fraud and signals forthcoming protection and compensation obligations; a February 2026 High Court notice has already asked pointed questions about UPI fraud safeguards. [15]
+- **September 1, 2026 — the DPIP Smart Registry went live.** The Digital Payments Intelligence Platform — a prototype built by the RBI Innovation Hub, now run by the not-for-profit **Indian Digital Payments Intelligence Corporation (IDPIC)** — went live with eight banks, with ~25 more banks and the top payment aggregators onboarding toward a stated ~80% volume-coverage target. Phase 1 is a shared negative registry (entity flags for onboarding due diligence, beneficiary additions and database scrubbing); Phase 2 adds **real-time pre-transaction risk scoring**. Institutions contribute fraud signals; connected risk context flows back — and each institution keeps its own decisions. [19][20]
 
 Read plainly: lenders that fund UPI payments from credit will be expected to run real-time fraud checks enriched by national signals — and smaller banks "lack understanding of the product" and the technology to build it in-house. [3] That is a gap an embeddable engine can fill.
+
+### How Krediwall relates to DPIP
+
+DPIP and Krediwall are different layers of the same defence:
+
+| | **DPIP / IDPIC** | **Krediwall** |
+|---|---|---|
+| Model | Centralised shared utility — institutions contribute signals; connected intelligence flows back | Decentralised engine — runs inside one lender's perimeter; nothing is pooled |
+| Catches | Flagged **entities** — the *who* (mule accounts, suspect beneficiaries seen across institutions) | Novel **patterns** — the *what* (credit-line drain, velocity, first-payee) even on entities nobody has flagged |
+| Knows | What the ecosystem has reported | What only *this lender* can see — credit limit, utilisation burn, line age |
+| Role | Intelligence layer — returns risk context; the bank still decides | Decision layer — ALLOW / REVIEW / BLOCK inside the authorisation path, in microseconds |
+| Scope | All digital payments | Credit-funded UPI only |
+| Access | Institutional onboarding, phased rollout | `npm install` — open source |
+
+They are complementary by design, and three structural facts keep the layers from overlapping even after Phase 2:
+
+1. **Credit context never reaches the centre.** Limit, burn rate and line age are bank-internal data, not contributed registry signals — a ₹1 lakh line draining in 45 seconds is invisible to a shared platform.
+2. **Latency.** An external intelligence call inside a microsecond authorisation budget costs a network round-trip; Krediwall evaluates in-process, in-memory.
+3. **The regulator frames it the same way.** "For a bank decision, the ultimate decision has to be of [the] bank." [21] A shared layer supplies signals; each institution still needs its own decision layer — and DPIP's Phase-2 risk API, once open to lenders, is a candidate *input* into a Krediwall evaluation via the feed-adapter seam.
 
 ## 5. Why now — the window
 
@@ -89,3 +109,6 @@ So the addressable *evaluation volume* is a small slice of UPI today by count an
 16. Mint, *RuPay-on-UPI boosts card usage, but profits remain elusive* — https://www.livemint.com/industry/banking/rupay-credit-cards-upi-monetization-banks-fintechs-credit-card-usage-11784887621642.html
 17. Moneycontrol, *Credit card transactions jump 24%, but average spend falls 13%. Is UPI changing how we use cards?* (July 2026) — https://www.moneycontrol.com/news/business/personal-finance/credit-card-transactions-jump-24-but-average-spend-falls-13-is-upi-changing-how-we-use-cards-14019674.html
 18. The Times of India, *NPCI developing 'federated model' to counter fraud transactions using UPI*, 2025 (NPCI risk codes provided free of cost to banks) — https://timesofindia.indiatimes.com/business/india-business/npci-developing-federated-model-to-counter-fraud-transactions-using-upi/articleshow/119913366.cms
+19. MediaNama, *GFF 2026: DPIP Smart Registry goes live with eight banks*, Sept 2026 — https://www.medianama.com/2026/09/223-dpip-smart-registry-fraud-prevention/
+20. IDPIC, *About DPIP — how it works* — https://idpic.org.in/how-dpip-works ; Economic Times, *DPIP: RBI's AI tool to detect fraud in real time* — https://economictimes.indiatimes.com/news/economy/policy/dpip-rbis-ai-tool-to-detect-fraud-in-real-time/articleshow/124536025.cms
+21. CNBC-TV18, *RBI to provide Digital Payment Intelligence Platform to banks to tackle fraud* (Governor Malhotra, FIBAC 2026) — https://www.cnbctv18.com/business/finance/rbi-to-provide-digital-payment-intelligence-platform-banks-tackle-fraud-19966362.htm
