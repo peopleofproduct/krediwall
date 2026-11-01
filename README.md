@@ -267,6 +267,7 @@ Krediwall is open-core: the engine, rules, feed adapter, gateway and deployment 
 - [Integration guide](docs/integration-guide.md) — production deployment, restarts, HA, feeds and limits
 - [API contract](docs/api/openapi.yaml) — OpenAPI 3.1 for all gateway endpoints
 - [Feed snapshot format](docs/feed-snapshot-format.md) — the FRI/DIP JSON file the loader accepts
+- [DPIP integration](docs/dpip-integration.md) — how Krediwall consumes RBI's fraud-intelligence platform (living doc)
 - [Market opportunity](docs/market-opportunity.md) — volumes, fraud data and timing, with citations
 - [Commercial strategy](docs/commercial-strategy.md) — open-core split and pricing
 - [Publishing](docs/publishing.md) — how `@krediwall/*` reaches npm

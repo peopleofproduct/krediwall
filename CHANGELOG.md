@@ -11,6 +11,10 @@ versions may break APIs until a 1.0 is cut.
   Registry launch and a "How Krediwall relates to DPIP" comparison —
   shared entity-intelligence layer versus lender-side credit-context
   decision layer. README "does not do" section points to it.
+- `docs/dpip-integration.md` (living document): the three
+  integration paths — Smart Registry as a `FraudFeed`, Phase-2
+  scoring as adapter-layer prefetch, and contribution via the
+  decision log — plus the open questions the API spec will settle.
 
 ## 0.2.2 — public launch
 
