@@ -10,10 +10,10 @@
 
 | Phase | Status | What it does |
 |---|---|---|
-| **1 — Smart Registry** | Live since 1 Sep 2026 (8 banks pilot; ~25 more + top payment aggregators onboarding) | Shared negative registry — entity flags for onboarding due diligence, beneficiary additions, profile changes, database scrubbing |
+| **1 — Smart Registry** | Live since 1 Sep 2026 (8 banks live; ~25 more expected within two months + top 15 payment aggregators targeted by end-January) | Shared negative registry — entity flags for onboarding due diligence, beneficiary additions, profile changes, database scrubbing |
 | **2 — Risk scoring** | Announced, not yet live | Real-time pre-transaction risk scores via API, trained on contributed multi-source data |
 
-DPIP is operated by **IDPIC** (Indian Digital Payments Intelligence
+DPIP is operated by **IDPIC** (Indian Digital Payment Intelligence
 Corporation), a neutral not-for-profit utility under the RBI mandate;
 the RBI Innovation Hub built the prototype. Institutions contribute
 fraud signals; connected risk context flows back — each institution

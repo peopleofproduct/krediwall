@@ -4,11 +4,10 @@ coverage/
 *.tsbuildinfo
 .DS_Store
 *.log
-.env
-.env.*
 
 # npm auth tokens must never be committed
 .npmrc
 
 # local-only asset generation prompts (not published)
 docs/assets/PROMPTS.md
+config.bat
