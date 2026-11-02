@@ -11,6 +11,8 @@ versions may break APIs until a 1.0 is cut.
   Registry launch and a "How Krediwall relates to DPIP" comparison —
   shared entity-intelligence layer versus lender-side credit-context
   decision layer. README "does not do" section points to it.
+- `docs/assets/dpip-comparison.svg`: the DPIP × Krediwall comparison
+  as a visual, embedded beside the comparison table.
 
 ## 0.2.2 — public launch
 

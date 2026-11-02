@@ -64,6 +64,8 @@ DPIP and Krediwall are different layers of the same defence:
 | Scope | All digital payments | Credit-funded UPI only |
 | Access | Institutional onboarding, phased rollout | `npm install` — open source |
 
+![DPIP and Krediwall side by side — two layers of the same defence](assets/dpip-comparison.svg)
+
 They are complementary by design, and three structural facts keep the layers from overlapping even after Phase 2:
 
 1. **Credit context never reaches the centre.** Limit, burn rate and line age are bank-internal data, not contributed registry signals — a ₹1 lakh line draining in 45 seconds is invisible to a shared platform.
