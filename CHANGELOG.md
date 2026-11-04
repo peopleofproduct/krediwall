@@ -13,6 +13,13 @@ versions may break APIs until a 1.0 is cut.
   decision layer. README "does not do" section points to it.
 - `docs/assets/dpip-comparison.svg`: the DPIP × Krediwall comparison
   as a visual, embedded beside the comparison table.
+- `docs/dpip-integration.md` now on `main` (it had been stranded on
+  the merged docs branch): the three integration paths — Smart
+  Registry as a `FraudFeed`, Phase-2 scoring as adapter-layer
+  prefetch, and contribution via the decision log — plus the open
+  questions the API spec will settle. Also corrects the IDPIC legal
+  name in the market-context doc and tightens the rollout numbers
+  to the GFF 2026 source.
 
 ## 0.2.2 — public launch
 
