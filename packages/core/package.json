@@ -14,7 +14,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "node init && tsc -b",
     "prepublishOnly": "tsc -b"
   },
   "repository": {
